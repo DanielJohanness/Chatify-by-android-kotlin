@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="white">#FFFFFF</color>
+
     <!-- Warna dari palet -->
     <color name="blue_dark">#094fa4</color>
     <color name="blue">#0065c1</color>

@@ -123,6 +123,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun startDashboard() {
-        startActivity(Intent(this, DashboardActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java))
     }
 }

@@ -24,4 +24,7 @@
         <item name="android:textColorPrimary">@color/colorOnBackground</item>
         <item name="android:windowBackground">@color/colorBackground</item>
     </style>
+    <style name="Theme.App.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_screen_background</item>
+    </style>
 </resources>
