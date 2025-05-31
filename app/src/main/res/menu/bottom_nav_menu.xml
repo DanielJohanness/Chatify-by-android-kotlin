@@ -16,9 +16,9 @@
         android:title="Add" />
 
     <item
-        android:id="@+id/notificationsFragment"
-        android:icon="@drawable/ic_notifications"
-        android:title="Notifications" />
+        android:id="@+id/callLogsFragment"
+        android:icon="@drawable/ic_call_logs"
+        android:title="Call Logs" />
 
     <item
         android:id="@+id/profileFragment"

@@ -21,9 +21,9 @@
 <!--        android:label="Add" />-->
 
 <!--    <fragment-->
-<!--        android:id="@+id/notificationsFragment"-->
-<!--        android:name="com.student.chatify.NotificationsFragment"-->
-<!--        android:label="Notifications" />-->
+<!--        android:id="@+id/callLogsFragment"-->
+<!--        android:name="com.student.chatify.CallLogsFragment"-->
+<!--        android:label="Call Logs" />-->
 
 <!--    <fragment-->
 <!--        android:id="@+id/profileFragment"-->
