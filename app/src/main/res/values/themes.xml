@@ -27,4 +27,6 @@
     <style name="Theme.App.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_screen_background</item>
     </style>
+        <color name="google_button_bg_light">#FFFFFF</color>
+        <color name="google_button_text_light">#000000</color>
 </resources>

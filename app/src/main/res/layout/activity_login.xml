@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:orientation="vertical">
 
     <EditText
         android:id="@+id/emailEditText"
@@ -28,11 +27,26 @@
         android:text="Login"
         android:layout_marginTop="16dp" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/googleSignInButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Login dengan Google"
+        android:text="Continue with Google"
+        app:icon="@drawable/ic_google"
+        app:iconTint="@null"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        android:layout_marginTop="12dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/appleSignInButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Continue with Apple"
+        app:icon="@drawable/ic_apple"
+        app:iconTint="@null"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
         android:layout_marginTop="12dp" />
 
     <TextView

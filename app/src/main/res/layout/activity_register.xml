@@ -114,7 +114,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Daftar dengan Google"
-            android:icon="@drawable/ic_google_logo"
+            android:icon="@drawable/ic_google"
             iconPadding="8dp"
             iconGravity="textStart"
             android:padding="12dp"

@@ -15,4 +15,6 @@
         <item name="android:statusBarColor">@color/blue_dark</item>
         <item name="android:navigationBarColor">@color/blue</item>
     </style>
+        <color name="google_button_bg_light">#1A1A1A</color> <!-- abu tua -->
+        <color name="google_button_text_light">#FFFFFF</color>
 </resources>
