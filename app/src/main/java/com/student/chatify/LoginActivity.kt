@@ -22,6 +22,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
 
     private lateinit var googleSignInButton: Button
+    private lateinit var anonymousLoginButton: Button
     private lateinit var loadingProgressBar: ProgressBar
     private lateinit var errorTextView: TextView
 
@@ -55,6 +56,7 @@ class LoginActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
 
         googleSignInButton = findViewById(R.id.googleSignInButton)
+        anonymousLoginButton = findViewById(R.id.anonymousLoginButton)
         loadingProgressBar = findViewById(R.id.loadingProgressBar)
         errorTextView = findViewById(R.id.errorTextView)
 
@@ -67,12 +69,19 @@ class LoginActivity : AppCompatActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Pastikan pengguna memilih akun Google saat login
+        // Google Sign-In
         googleSignInButton.setOnClickListener {
-            // Menampilkan progress loading
+            googleSignInClient.signOut().addOnCompleteListener(this) {
+                showLoading(true)
+                val signInIntent = googleSignInClient.signInIntent
+                googleSignInLauncher.launch(signInIntent)
+            }
+        }
+
+        // Anonymous Login
+        anonymousLoginButton.setOnClickListener {
             showLoading(true)
-            val signInIntent = googleSignInClient.signInIntent
-            googleSignInLauncher.launch(signInIntent)
+            firebaseAuthWithAnonymous()
         }
     }
 
@@ -90,9 +99,23 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
+    private fun firebaseAuthWithAnonymous() {
+        auth.signInAnonymously()
+            .addOnCompleteListener(this) { task ->
+                showLoading(false)
+                if (task.isSuccessful) {
+                    Toast.makeText(this, "Login anonim berhasil", Toast.LENGTH_SHORT).show()
+                    startDashboard()
+                } else {
+                    showError("Login anonim gagal: ${task.exception?.message}")
+                }
+            }
+    }
+
     private fun showLoading(loading: Boolean) {
         loadingProgressBar.visibility = if (loading) android.view.View.VISIBLE else android.view.View.GONE
         googleSignInButton.isEnabled = !loading
+        anonymousLoginButton.isEnabled = !loading
     }
 
     private fun showError(message: String) {
