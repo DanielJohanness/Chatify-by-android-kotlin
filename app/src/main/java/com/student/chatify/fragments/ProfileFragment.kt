@@ -40,14 +40,12 @@ class ProfileFragment : Fragment() {
         val profileImageView: ImageView = view.findViewById(R.id.profileImageView)
         val welcomeTextView: TextView = view.findViewById(R.id.welcomeTextView)
         val emailTextView: TextView = view.findViewById(R.id.emailTextView)
-        val phoneTextView: TextView = view.findViewById(R.id.phoneTextView)
         val logoutButton: Button = view.findViewById(R.id.logoutButton)
 
         val user = auth.currentUser
 
         welcomeTextView.text = "Selamat datang, ${user?.displayName ?: user?.email ?: "User"}"
         emailTextView.text = user?.email ?: "Email tidak tersedia"
-        phoneTextView.text = user?.phoneNumber ?: "Nomor telepon tidak tersedia"
 
         val photoUrl = user?.photoUrl
         Log.d("ProfileFragment", "photoUrl = $photoUrl")

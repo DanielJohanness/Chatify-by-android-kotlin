@@ -1,59 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="?android:windowBackground">
 
-    <EditText
-        android:id="@+id/emailEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Email"
-        android:inputType="textEmailAddress" />
-
-    <EditText
-        android:id="@+id/passwordEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Password"
-        android:inputType="textPassword"
-        android:layout_marginTop="12dp" />
-
-    <Button
-        android:id="@+id/loginButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login"
-        android:layout_marginTop="16dp" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/googleSignInButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Continue with Google"
-        app:icon="@drawable/ic_google"
-        app:iconTint="@null"
-        app:iconGravity="textStart"
-        app:iconPadding="8dp"
-        android:layout_marginTop="12dp" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/appleSignInButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Continue with Apple"
-        app:icon="@drawable/ic_apple"
-        app:iconTint="@null"
-        app:iconGravity="textStart"
-        app:iconPadding="8dp"
-        android:layout_marginTop="12dp" />
-
+    <!-- Judul Selamat datang -->
     <TextView
-        android:id="@+id/toRegisterTextView"
+        android:id="@+id/welcomeTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Belum punya akun? Daftar di sini"
-        android:textColor="#1E88E5"
-        android:layout_marginTop="20dp" />
+        android:text="Selamat Datang di Chatify"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:textAlignment="center"
+        android:layout_marginBottom="32dp"
+        android:textColor="?attr/colorPrimary" />
+
+    <!-- Progress bar untuk menampilkan status loading -->
+    <ProgressBar
+        android:id="@+id/loadingProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:indeterminate="true"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Google Sign In Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/googleSignInButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Masuk dengan Google"
+        app:icon="@drawable/ic_google"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="?attr/colorSurface"
+        android:textColor="?attr/colorOnSurface"
+        android:theme="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+    <!-- Anonymous Login Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/anonymousLoginButton"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Masuk sebagai Tamu"
+        app:icon="@drawable/ic_guest"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        android:textColor="?attr/colorPrimary"
+        android:theme="@style/Widget.MaterialComponents.Button.TextButton" />
+
+    <!-- Pesan kesalahan jika login gagal -->
+    <TextView
+        android:id="@+id/errorTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="@android:color/holo_red_dark"
+        android:layout_marginTop="16dp"
+        android:visibility="gone" />
 </LinearLayout>

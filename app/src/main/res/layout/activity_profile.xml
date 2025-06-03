@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:padding="24dp">
+
+    <!-- ImageView untuk Foto Profil -->
+    <ImageView
+        android:id="@+id/profileImageView"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@drawable/ic_default_profile"
+        android:contentDescription="Foto Profil"
+        android:scaleType="centerCrop"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/profile_image_circle"
+        android:elevation="4dp"/>
+
+    <!-- TextView untuk Menyapa Pengguna -->
+    <TextView
+        android:id="@+id/welcomeTextView"
+        android:text="Halo, Pengguna"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <!-- TextView untuk Menampilkan Email -->
+    <TextView
+        android:id="@+id/emailTextView"
+        android:text="Email tidak tersedia"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"/>
+
+    <!-- Tombol untuk Logout -->
+    <Button
+        android:id="@+id/logoutButton"
+        android:text="Logout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="?attr/colorPrimary"
+        android:textColor="@android:color/white"/>
+
+    <!-- Tombol untuk Edit Profil -->
+    <Button
+        android:id="@+id/editProfileButton"
+        android:text="Edit Profil"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="?attr/colorPrimary"
+        android:textColor="@android:color/white"/>
+</LinearLayout>

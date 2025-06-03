@@ -1,0 +1,19 @@
+<!-- item_chat_typing.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:padding="10dp">
+
+    <!-- item_chat_typing.xml -->
+    <TextView
+        android:id="@+id/typingTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="AI sedang mengetik..."
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:padding="8dp"
+        android:gravity="center" />
+</LinearLayout>

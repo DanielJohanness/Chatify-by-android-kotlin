@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.appcheck.ktx)
     implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.firebase.storage.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -65,5 +66,6 @@ dependencies {
     implementation (libs.androidx.navigation.ui.ktx)
     implementation (libs.glide)
     implementation (libs.core)
+    implementation (libs.picasso)
 
 }
