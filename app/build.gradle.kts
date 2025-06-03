@@ -47,10 +47,15 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.appcheck.ktx)
+    implementation(libs.firebase.appcheck.playintegrity)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+    implementation(libs.kotlinx.coroutines.android)
+
     implementation(libs.firebase.analytics)
     implementation (libs.firebase.auth)
     implementation (libs.play.services.auth)
@@ -59,4 +64,6 @@ dependencies {
     implementation (libs.androidx.navigation.fragment.ktx)
     implementation (libs.androidx.navigation.ui.ktx)
     implementation (libs.glide)
+    implementation (libs.core)
+
 }

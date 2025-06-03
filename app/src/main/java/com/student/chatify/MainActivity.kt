@@ -1,119 +1,154 @@
 package com.student.chatify
 
-import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
-import android.view.View
+import android.util.Log
+import android.view.inputmethod.EditorInfo
+import android.widget.Button
+import android.widget.EditText
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.navigation.NavOptions
-import androidx.navigation.fragment.NavHostFragment
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.firebase.auth.FirebaseAuth
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Firebase
+import com.google.firebase.ai.GenerativeModel
+import com.google.firebase.ai.ai
+import com.student.chatify.recyclerView.ChatAdapter
+import com.student.chatify.model.ChatMessage
+import kotlinx.coroutines.*
+import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
+    private lateinit var chatRecyclerView: RecyclerView
+    private lateinit var messageEditText: EditText
+    private lateinit var sendButton: Button
 
-    private val tabOrder = listOf(
-        R.id.homeFragment,
-        R.id.searchFragment,
-        R.id.addFragment,
-        R.id.callLogsFragment,
-        R.id.profileFragment
-    )
-    private var currentTabIndex = 0
+    private val chatMessages = mutableListOf<ChatMessage>()
+    private lateinit var chatAdapter: ChatAdapter
 
+    private lateinit var generativeModel: GenerativeModel
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private var isAITyping = false
+
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        auth = FirebaseAuth.getInstance()
-
-        if (auth.currentUser == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-
         setContentView(R.layout.activity_main)
-        setSystemBarsColorFromTheme()
 
-        val navController = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment).navController
+        // Inisialisasi Firebase AI generative model
+        generativeModel = Firebase.ai.generativeModel("gemini-1.5-flash")
 
-        findViewById<BottomNavigationView>(R.id.bottom_navigation).setOnItemSelectedListener { item ->
-            val targetIndex = tabOrder.indexOf(item.itemId)
-            val currentIndex = tabOrder.indexOf(navController.currentDestination?.id)
-            if (targetIndex == currentIndex || targetIndex == -1) return@setOnItemSelectedListener false
+        chatRecyclerView = findViewById(R.id.chatRecyclerView)
+        messageEditText = findViewById(R.id.messageEditText)
+        messageEditText.requestFocus()
+        sendButton = findViewById(R.id.sendButton)
 
-            val isForward = targetIndex > currentIndex
-
-            val anim = NavOptions.Builder()
-                .setEnterAnim(if (isForward) R.anim.slide_in_right else R.anim.slide_in_left)
-                .setExitAnim(if (isForward) R.anim.slide_out_left else R.anim.slide_out_right)
-                .setPopEnterAnim(if (isForward) R.anim.slide_in_left else R.anim.slide_in_right)
-                .setPopExitAnim(if (isForward) R.anim.slide_out_right else R.anim.slide_out_left)
-                .setLaunchSingleTop(true)
-                .build()
-
-            navController.navigate(item.itemId, null, anim)
-            currentTabIndex = targetIndex
-            true
-        }
-    }
-
-    private fun setSystemBarsColorFromTheme() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return
-
-        // Ambil warna background dari tema aplikasi, bisa pakai colorSurface Material
-        val bgColor = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
-            ?: resolveThemeColor(android.R.attr.windowBackground)
-            ?: ContextCompat.getColor(this, android.R.color.white)
-
-        window.statusBarColor = bgColor
-
-        // Navigation bar juga ikut warna tema jika memungkinkan
-        val navBarColor = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
-            ?: ContextCompat.getColor(this, android.R.color.black)
-
-        window.navigationBarColor = navBarColor
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val decorView = window.decorView
-            decorView.systemUiVisibility = decorView.systemUiVisibility.let {
-                if (isColorLight(bgColor))
-                    it or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                else
-                    it and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+        chatAdapter = ChatAdapter(chatMessages, this)
+        chatRecyclerView.apply {
+            adapter = chatAdapter
+            layoutManager = LinearLayoutManager(this@MainActivity).apply {
+                stackFromEnd = true // supaya scroll ke bawah otomatis
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val decorView = window.decorView
-            decorView.systemUiVisibility = decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        sendButton.setOnClickListener {
+            val message = messageEditText.text.toString().trim()
+            if (message.isNotEmpty()) {
+                sendUserMessage(message)
+                messageEditText.text.clear()
+            }
         }
-    }
 
-    // Fungsi bantu untuk resolve warna dari atribut tema
-    private fun resolveThemeColor(attrRes: Int): Int? {
-        val typedValue = TypedValue()
-        val theme = theme
-        return if (theme.resolveAttribute(attrRes, typedValue, true)) {
-            if (typedValue.resourceId != 0) {
-                ContextCompat.getColor(this, typedValue.resourceId)
+        // Optional: kirim pesan saat tekan tombol enter di keyboard
+        messageEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                sendButton.performClick()
+                true
             } else {
-                typedValue.data
+                false
             }
-        } else null
+        }
     }
 
-    private fun isColorLight(color: Int): Boolean {
-        val darkness = 1 - (
-                0.299 * Color.red(color) +
-                        0.587 * Color.green(color) +
-                        0.114 * Color.blue(color)
-                ) / 255
-        return darkness < 0.5
+    private fun sendUserMessage(message: String) {
+        // Tambah pesan user ke list
+        addMessage(ChatMessage(message, isUser = true))
+
+        // Tambahkan indikator bahwa AI sedang membalas
+        val typingMessage = ChatMessage("AI sedang mengetik...", isUser = false)
+        isAITyping = true
+        addMessage(typingMessage)
+
+        coroutineScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    generativeModel.generateContent(message)
+                }
+
+                // Hapus "AI sedang mengetik..."
+                if (isAITyping) {
+                    removeLastMessage() // Hapus bubble sementara
+                    isAITyping = false
+                }
+
+                val aiReply = response.text
+                if (aiReply.isNullOrBlank()) {
+                    addMessage(ChatMessage("AI tidak memberikan balasan.", isUser = false))
+                    chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+                } else {
+                    addMessage(ChatMessage(aiReply, isUser = false))
+                    chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+                }
+
+            } catch (e: Exception) {
+                if (isAITyping) {
+                    removeLastMessage()
+                    isAITyping = false
+                }
+                Log.e("ChatAI", "Gagal generate konten AI", e)
+                addMessage(ChatMessage("Terjadi kesalahan: ${e.localizedMessage}", isUser = false))
+                chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+            }
+        }
+    }
+
+    private fun removeLastMessage() {
+        if (chatMessages.isNotEmpty()) {
+            chatMessages.removeAt(chatMessages.lastIndex) // GANTI DENGAN removeAt(lastIndex)
+            chatAdapter.notifyItemRemoved(chatMessages.size)
+            chatRecyclerView.scrollToPosition(chatMessages.size)
+        }
+    }
+
+    private fun addMessage(chatMessage: ChatMessage) {
+        // Cek apakah perlu tambah header tanggal
+        val lastMessage = chatMessages.lastOrNull()
+        if (lastMessage == null || !isSameDay(lastMessage.timestamp, chatMessage.timestamp)) {
+            // Tambah header tanggal dulu
+            chatMessages.add(ChatMessage(
+                message = "", // kosong, isi hanya di adapter pake tanggal
+                isUser = false,
+                timestamp = chatMessage.timestamp,
+                isDateHeader = true
+            ))
+        }
+
+        chatMessages.add(chatMessage)
+        chatAdapter.notifyItemInserted(chatMessages.size - 1)
+        chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+    }
+
+    private fun isSameDay(time1: Long, time2: Long): Boolean {
+        val cal1 = Calendar.getInstance().apply { timeInMillis = time1 }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = time2 }
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.cancel() // pastikan coroutine dihentikan saat Activity dihancurkan
     }
 }
