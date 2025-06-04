@@ -5,7 +5,6 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -115,29 +114,8 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
         submitList(currentList)
     }
 
-    /** Tambahkan loading indicator di akhir */
-    fun showLoading() {
-        val currentList = currentList.toMutableList()
-        if (currentList.none { it is ChatItem.Message && it.timestamp == -1L }) {
-            currentList.add(ChatItem.Message(
-                id = "loading",
-                text = "",
-                isUser = false,
-                timestamp = -1L
-            ))
-        }
-        submitList(currentList)
-    }
-
-    fun hideLoading() {
-        val currentList = currentList.filterNot {
-            it is ChatItem.Message && it.timestamp == -1L
-        }
-        submitList(currentList)
-    }
-
     // ViewHolder untuk pesan user
-    inner class UserViewHolder(itemView: View, private val context: Context) : RecyclerView.ViewHolder(itemView) {
+    inner class UserViewHolder(itemView: View, context: Context) : RecyclerView.ViewHolder(itemView) {
         private val txtMessage: TextView = itemView.findViewById(R.id.userTextView)
         private val txtTime: TextView = itemView.findViewById(R.id.userTimeTextView)
         private val markwon = Markwon.create(context)
@@ -153,7 +131,7 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
     }
 
     // ViewHolder untuk pesan AI
-    inner class AIViewHolder(itemView: View, private val context: Context) : RecyclerView.ViewHolder(itemView) {
+    inner class AIViewHolder(itemView: View, context: Context) : RecyclerView.ViewHolder(itemView) {
         private val txtMessage: TextView = itemView.findViewById(R.id.aiTextView)
         private val txtTime: TextView = itemView.findViewById(R.id.aiTimeTextView)
         private val markwon = Markwon.create(context)
@@ -172,7 +150,7 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
         }
     }
 
-    // ViewHolder untuk “AI sedang mengetik”
+    // ViewHolder untuk “AI sedang mengetik” (menggunakan "typing" status)
     inner class TypingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val txtTyping: TextView = itemView.findViewById(R.id.typingTextView)
         fun bind() {
@@ -180,9 +158,8 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
         }
     }
 
-    // ViewHolder untuk “Memuat pesan…”
+    // ViewHolder untuk “Memuat pesan…” (indicator loading)
     inner class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val progressBar: ProgressBar = itemView.findViewById(R.id.loadingProgressBar)
         private val txtLoading: TextView = itemView.findViewById(R.id.loadingTextView)
         fun bind() {
             txtLoading.text = "Memuat..."

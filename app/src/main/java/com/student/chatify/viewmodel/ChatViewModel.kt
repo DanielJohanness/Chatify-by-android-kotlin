@@ -6,6 +6,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Firebase
+import com.google.firebase.ai.GenerativeModel
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -27,6 +31,8 @@ class ChatViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
 
+    // Inisialisasi generativeModel hanya sekali
+    private val generativeModel: GenerativeModel = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel("gemini-1.5-flash")
     fun loadChatHistory() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId.isNullOrBlank()) {
@@ -121,9 +127,10 @@ class ChatViewModel : ViewModel() {
                 docRef.update("status", MessageStatus.SENT.name)
                 updateLocalMessageStatus(localId, MessageStatus.SENT, docRef.id)
 
-                // Dummy response setelah pesan user berhasil dikirim
+                // Call AI model to generate a response
                 viewModelScope.launch {
-                    sendDummyAIResponse("Ini adalah respons dummy untuk: \"$text\"")
+                    val aiResponse = generateText("Ini adalah respons dummy untuk: \"$text\"")
+                    sendAIResponse(aiResponse)
                 }
             }
             .addOnFailureListener { e ->
@@ -146,7 +153,21 @@ class ChatViewModel : ViewModel() {
         _chatItems.postValue(updated)
     }
 
-    private suspend fun sendDummyAIResponse(responseText: String) {
+    private suspend fun generateText(prompt: String): String {
+        try {
+            // Generate text using Firebase AI (Gemini model)
+            val response = generativeModel.generateContent(prompt)
+
+            // Extract the generated text
+            return response.text ?: "Tidak ada hasil teks yang ditemukan."
+        } catch (e: Exception) {
+            // Handle the error
+            Log.e("ChatViewModel", "Error generating text: ${e.message}")
+            return "Terjadi kesalahan: ${e.message}"
+        }
+    }
+
+    private suspend fun sendAIResponse(responseText: String) {
         withContext(Dispatchers.Main) {
             _typingStatus.value = true
 
