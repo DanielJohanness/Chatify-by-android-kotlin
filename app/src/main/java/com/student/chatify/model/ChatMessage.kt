@@ -7,10 +7,7 @@ import java.util.Locale
 data class ChatMessage(
     val message: String = "",
     val user: Boolean = false,
-    val timestamp: Long = System.currentTimeMillis(),
-    val dateHeader: Boolean = false,
-    val typingStatus: Boolean = false,
-    val loading: Boolean = false
+    val timestamp: Long = System.currentTimeMillis()
 ) {
     fun timestampFormatted(): String {
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())

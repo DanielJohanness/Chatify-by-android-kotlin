@@ -1,11 +1,11 @@
 package com.student.chatify.recyclerView
 
 import android.content.Context
-import android.os.Handler
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.student.chatify.R
 import com.student.chatify.model.ChatMessage
@@ -13,10 +13,10 @@ import io.noties.markwon.Markwon
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ChatAdapter(
-    private val messages: MutableList<ChatMessage>,
-    private val context: Context
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ChatAdapter : ListAdapter<ChatMessage, RecyclerView.ViewHolder>(ChatMessageDiffCallback()) {
+
+    private val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
 
     companion object {
         private const val VIEW_TYPE_USER = 1
@@ -26,34 +26,60 @@ class ChatAdapter(
         private const val VIEW_TYPE_LOADING = 5
     }
 
-    private val markwon = Markwon.create(context)
-    private val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    private val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
-
-    override fun getItemViewType(position: Int): Int {
-        val message = messages[position]
-        return when {
-            message.dateHeader -> VIEW_TYPE_DATE_HEADER
-            message.user -> VIEW_TYPE_USER
-            message.typingStatus -> VIEW_TYPE_TYPING
-            message.loading -> VIEW_TYPE_LOADING
-            else -> VIEW_TYPE_AI
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        val context = parent.context // Mendapatkan konteks dari parent
+        return when (viewType) {
+            VIEW_TYPE_USER -> UserViewHolder(inflater.inflate(R.layout.item_chat_user, parent, false), context)
+            VIEW_TYPE_AI -> AIViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false), context)
+            VIEW_TYPE_DATE_HEADER -> DateHeaderViewHolder(inflater.inflate(R.layout.item_chat_date_header, parent, false))
+            VIEW_TYPE_TYPING -> TypingViewHolder(inflater.inflate(R.layout.item_chat_typing, parent, false))
+            VIEW_TYPE_LOADING -> LoadingViewHolder(inflater.inflate(R.layout.item_chat_loading, parent, false))
+            else -> throw IllegalArgumentException("Unknown view type $viewType")
         }
     }
 
-    // View Holder for loading status
-    inner class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val loadingTextView: TextView = itemView.findViewById(R.id.loadingTextView)
-
-        fun bind() {
-            loadingTextView.text = "Memuat pesan..."
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val message = getItem(position)
+        when (holder) {
+            is UserViewHolder -> holder.bind(message)
+            is AIViewHolder -> holder.bind(message)
+            is DateHeaderViewHolder -> holder.bind(message)
+            is TypingViewHolder -> holder.bind()
+            is LoadingViewHolder -> holder.bind()
         }
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        val message = getItem(position)
+
+        if (message.timestamp == Long.MAX_VALUE) return VIEW_TYPE_TYPING
+        if (message.timestamp == -1L) return VIEW_TYPE_LOADING
+
+        if (position == 0 || !isSameDay(getItem(position - 1).timestamp, message.timestamp)) {
+            return VIEW_TYPE_DATE_HEADER
+        }
+
+        return if (message.user) VIEW_TYPE_USER else VIEW_TYPE_AI
+    }
+
+    fun updateTypingStatus(isTyping: Boolean) {
+        val typingMessage = ChatMessage("AI sedang mengetik...", false, Long.MAX_VALUE)
+
+        val newList = if (isTyping) {
+            if (!currentList.contains(typingMessage)) currentList + typingMessage else currentList
+        } else {
+            currentList.filterNot { it.message == "AI sedang mengetik..." }
+        }
+
+        submitList(newList)
     }
 
     // View Holder for User messages
-    inner class UserViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class UserViewHolder(itemView: View, private val context: Context) : RecyclerView.ViewHolder(itemView) {
         private val userTextView: TextView = itemView.findViewById(R.id.userTextView)
         private val userTimeTextView: TextView = itemView.findViewById(R.id.userTimeTextView)
+        private val markwon = Markwon.create(context)
 
         fun bind(message: ChatMessage) {
             markwon.setMarkdown(userTextView, message.message)
@@ -62,9 +88,10 @@ class ChatAdapter(
     }
 
     // View Holder for AI messages
-    inner class AIViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class AIViewHolder(itemView: View, private val context: Context) : RecyclerView.ViewHolder(itemView) {
         private val aiTextView: TextView = itemView.findViewById(R.id.aiTextView)
         private val aiTimeTextView: TextView = itemView.findViewById(R.id.aiTimeTextView)
+        private val markwon = Markwon.create(context)
 
         fun bind(message: ChatMessage) {
             markwon.setMarkdown(aiTextView, message.message)
@@ -84,65 +111,19 @@ class ChatAdapter(
     // View Holder for Typing status
     inner class TypingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val typingTextView: TextView = itemView.findViewById(R.id.typingTextView)
-        private val handler = Handler()
-        private var dotCount = 0
 
-        private val typingDotsRunnable = object : Runnable {
-            override fun run() {
-                dotCount = (dotCount + 1) % 4
-                typingTextView.text = "AI sedang mengetik${".".repeat(dotCount)}"
-                handler.postDelayed(this, 500)
-            }
-        }
-
-        fun bind(message: ChatMessage) {
-            handler.post(typingDotsRunnable)
-        }
-
-        fun stopTypingAnimation() {
-            handler.removeCallbacks(typingDotsRunnable)
+        fun bind() {
+            typingTextView.text = "AI sedang mengetik..."
         }
     }
 
-    // Create the view holders and bind them based on the viewType
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        val inflater = LayoutInflater.from(parent.context)
-        return when (viewType) {
-            VIEW_TYPE_USER -> UserViewHolder(inflater.inflate(R.layout.item_chat_user, parent, false))
-            VIEW_TYPE_AI -> AIViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false))
-            VIEW_TYPE_DATE_HEADER -> DateHeaderViewHolder(inflater.inflate(R.layout.item_chat_date_header, parent, false))
-            VIEW_TYPE_TYPING -> TypingViewHolder(inflater.inflate(R.layout.item_chat_typing, parent, false))
-            VIEW_TYPE_LOADING -> LoadingViewHolder(inflater.inflate(R.layout.item_chat_loading, parent, false))
-            else -> throw IllegalArgumentException("Unknown view type $viewType")
+    // View Holder for Loading status
+    inner class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val loadingTextView: TextView = itemView.findViewById(R.id.loadingTextView)
+
+        fun bind() {
+            loadingTextView.text = "Memuat pesan..."
         }
-    }
-
-    // Bind data to view holders
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val message = messages[position]
-        when (holder) {
-            is UserViewHolder -> holder.bind(message)
-            is AIViewHolder -> holder.bind(message)
-            is DateHeaderViewHolder -> holder.bind(message)
-            is TypingViewHolder -> holder.bind(message)
-            is LoadingViewHolder -> holder.bind()
-        }
-    }
-
-    // Get item count (number of messages)
-    override fun getItemCount() = messages.size
-
-    // Add a message to the list
-    fun addMessage(message: ChatMessage) {
-        // Check if date header is needed
-        val lastMessage = messages.lastOrNull()
-        if (lastMessage == null || !isSameDay(lastMessage.timestamp, message.timestamp)) {
-            messages.add(ChatMessage(message = "", user = false, timestamp = message.timestamp, dateHeader = true))
-        }
-
-        // Add message and update RecyclerView
-        messages.add(message)
-        notifyItemInserted(messages.size - 1)
     }
 
     // Helper to check if two messages are on the same day
