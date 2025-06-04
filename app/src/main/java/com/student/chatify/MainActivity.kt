@@ -1,8 +1,8 @@
+// file: MainActivity.kt
 package com.student.chatify
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.inputmethod.EditorInfo
@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var messageEditText: EditText
     private lateinit var sendButton: Button
     private val chatAdapter by lazy { ChatAdapter() }
-    private val chatViewModel: ChatViewModel by viewModels() // Using ViewModel to manage state
+    private val chatViewModel: ChatViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,23 +41,23 @@ class MainActivity : AppCompatActivity() {
         setupMessageInputListener()
 
         observeViewModel()
-        chatViewModel.loadChatHistory() // Load history when the activity is created
+        chatViewModel.loadChatHistory() // Muat history saat pertama kali
     }
 
     private fun setupRecyclerView() {
         chatRecyclerView.apply {
             adapter = chatAdapter
             layoutManager = LinearLayoutManager(this@MainActivity).apply {
-                stackFromEnd = true // Scroll automatically to the bottom
+                stackFromEnd = true
             }
         }
     }
 
     private fun setupSendButton() {
         sendButton.setOnClickListener {
-            val message = messageEditText.text.toString().trim()
-            if (message.isNotEmpty()) {
-                chatViewModel.sendUserMessage(message)
+            val text = messageEditText.text.toString().trim()
+            if (text.isNotEmpty()) {
+                chatViewModel.sendUserMessage(text)
                 messageEditText.text.clear()
             }
         }
@@ -75,15 +75,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeViewModel() {
-        chatViewModel.chatMessages.observe(this) { messages ->
-            Log.d("MainActivity", "Total messages: ${messages.size}")
-            messages.forEach { Log.d("MainActivity", it.toString()) }
-            chatAdapter.submitList(messages)
-            chatRecyclerView.scrollToPosition(messages.size - 1)
+        // Observe daftar ChatItem (termasuk DateHeader dan Message)
+        chatViewModel.chatItems.observe(this) { items ->
+            chatAdapter.submitList(items)
+            // Scroll ke item terakhir jika ada
+            if (items != null) {
+                if (items.isNotEmpty()) {
+                    chatRecyclerView.scrollToPosition(items.size - 1)
+                }
+            }
         }
 
+        // Observe typing status
         chatViewModel.typingStatus.observe(this) { isTyping ->
-            chatAdapter.updateTypingStatus(isTyping) // Update typing status in the adapter
+            chatAdapter.updateTypingStatus(isTyping)
+            if (isTyping && chatAdapter.itemCount > 0) {
+                chatRecyclerView.scrollToPosition(chatAdapter.itemCount - 1)
+            }
         }
     }
 

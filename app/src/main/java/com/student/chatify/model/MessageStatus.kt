@@ -1,5 +1,9 @@
 package com.student.chatify.model
 
 enum class MessageStatus {
-    TYPING, LOADING, NORMAL
+    SENDING,
+    SENT,
+    DELIVERED,
+    READ,
+    FAILED
 }
