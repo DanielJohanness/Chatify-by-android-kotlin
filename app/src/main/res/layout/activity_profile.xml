@@ -78,7 +78,7 @@
         android:id="@+id/editPhotoText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Edit Photo"
+        android:text=""
         android:textColor="#1976D2"
         android:textStyle="bold"
         android:layout_marginTop="4dp"

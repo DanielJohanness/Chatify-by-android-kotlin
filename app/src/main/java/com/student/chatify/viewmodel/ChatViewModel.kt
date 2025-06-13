@@ -32,7 +32,7 @@ class ChatViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
 
     // Inisialisasi generativeModel hanya sekali
-    private val generativeModel: GenerativeModel = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel("gemini-1.5-flash")
+    private val generativeModel: GenerativeModel = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel("gemini-2.0-flash")
     fun loadChatHistory() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId.isNullOrBlank()) {

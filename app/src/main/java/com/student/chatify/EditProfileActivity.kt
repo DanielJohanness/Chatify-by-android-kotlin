@@ -1,25 +1,21 @@
 package com.student.chatify
 
-import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.squareup.picasso.Picasso
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.firebase.auth.FirebaseUser
-import android.net.Uri
-import android.app.Activity.RESULT_OK
-import com.google.firebase.auth.UserProfileChangeRequest
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -99,18 +95,16 @@ class EditProfileActivity : AppCompatActivity() {
         val currentUser = auth.currentUser
 
         // Memperbarui Nama Pengguna
-        val userProfileChangeRequest = currentUser?.let {
-            it.updateProfile(
-                UserProfileChangeRequest.Builder()
-                    .setDisplayName(displayName)
-                    .setPhotoUri(profileImageUri)
-                    .build()
-            )
-        }
+        val userProfileChangeRequest = currentUser?.updateProfile(
+            UserProfileChangeRequest.Builder()
+                .setDisplayName(displayName)
+                .setPhotoUri(profileImageUri)  // Gunakan foto URI jika ada
+                .build()
+        )
 
         userProfileChangeRequest?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                // Memperbarui Foto Profil di Firebase Storage jika ada gambar baru
+                // Hanya upload gambar profil jika ada gambar yang dipilih
                 profileImageUri?.let { uploadProfileImage(it) }
 
                 Toast.makeText(this, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
@@ -130,13 +124,32 @@ class EditProfileActivity : AppCompatActivity() {
         uploadTask.addOnCompleteListener(OnCompleteListener { task ->
             if (task.isSuccessful) {
                 // Mendapatkan URL gambar setelah upload selesai
-                userProfileImageRef.downloadUrl.addOnSuccessListener { uri ->
-                    updateFirestoreProfileImage(uri.toString())
+                userProfileImageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                    // Update gambar profil di Firebase Authentication dan Firestore
+                    updateProfileImageInAuth(downloadUri)
+                    updateFirestoreProfileImage(downloadUri.toString())
                 }
             } else {
                 Log.e("EditProfile", "Gagal mengupload gambar: ${task.exception?.message}")
+                Toast.makeText(this, "Gagal mengupload gambar profil", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    // Memperbarui URL gambar profil di Firebase Authentication
+    private fun updateProfileImageInAuth(imageUri: Uri) {
+        val currentUser = auth.currentUser
+        val profileUpdates = UserProfileChangeRequest.Builder()
+            .setPhotoUri(imageUri)
+            .build()
+
+        currentUser?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("EditProfile", "Foto profil berhasil diperbarui di Firebase Authentication")
+            } else {
+                Log.e("EditProfile", "Gagal memperbarui foto profil di Firebase Authentication")
+            }
+        }
     }
 
     // Memperbarui URL gambar profil di Firestore

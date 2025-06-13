@@ -1,6 +1,7 @@
 [versions]
 agp = "8.10.1"
 core = "4.6.2"
+firebaseAppcheck = "18.0.0"
 firebaseAuth = "23.2.1"
 firebaseBom = "33.14.0"
 glide = "4.15.1"
@@ -30,6 +31,8 @@ androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx",
 core = { module = "io.noties.markwon:core", version.ref = "core" }
 firebase-ai = { module = "com.google.firebase:firebase-ai" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-appcheck = { module = "com.google.firebase:firebase-appcheck", version.ref = "firebaseAppcheck" }
+firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 firebase-auth = { module = "com.google.firebase:firebase-auth", version.ref = "firebaseAuth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
