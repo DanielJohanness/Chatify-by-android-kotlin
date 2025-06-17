@@ -1,118 +1,92 @@
 package com.student.chatify.fragments
 
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import android.view.*
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.textview.MaterialTextView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.student.chatify.ChatActivity
 import com.student.chatify.R
-import java.text.SimpleDateFormat
-import java.util.*
+import com.student.chatify.model.ChatListItem
+import com.student.chatify.recyclerView.ChatListAdapter
 
 class HomeFragment : Fragment() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: ChatListAdapter
+    private lateinit var progressIndicator: CircularProgressIndicator
+    private lateinit var emptyTextView: MaterialTextView
 
-    private lateinit var firestore: FirebaseFirestore
-    private lateinit var auth: FirebaseAuth
-    private lateinit var containerLayout: LinearLayout
-    private val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id"))
+    private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        val view = inflater.inflate(R.layout.fragment_home, container, false)
-        containerLayout = view.findViewById(R.id.containerLayout)
+    ): View = inflater.inflate(R.layout.fragment_home, container, false)
 
-        firestore = FirebaseFirestore.getInstance()
-        auth = FirebaseAuth.getInstance()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        recyclerView = view.findViewById(R.id.chatListRecyclerView)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+        emptyTextView = view.findViewById(R.id.emptyTextView)
 
-        loadLastMessages()
-
-        return view
-    }
-
-    private fun loadLastMessages() {
-        val currentUserId = auth.currentUser?.uid ?: return
-
-        firestore.collection("chats")
-            .get()
-            .addOnSuccessListener { chatSnapshots ->
-                if (chatSnapshots.isEmpty) {
-                    showNoMessageText()
-                    return@addOnSuccessListener
-                }
-
-                var hasMessage = false
-                var pending = chatSnapshots.size()
-
-                for (chatDoc in chatSnapshots) {
-                    val chatId = chatDoc.id
-
-                    firestore.collection("chats")
-                        .document(chatId)
-                        .collection("messages")
-                        .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                        .limit(1)
-                        .get()
-                        .addOnSuccessListener { messagesSnapshot ->
-                            val messageDoc = messagesSnapshot.documents.firstOrNull()
-                            pending--
-
-                            if (messageDoc != null) {
-                                hasMessage = true
-                                val senderId = messageDoc.getString("senderId") ?: return@addOnSuccessListener
-                                val receiverId = messageDoc.getString("receiverId") ?: return@addOnSuccessListener
-
-                                val otherUserId = if (senderId == currentUserId) receiverId else senderId
-                                val messageText = messageDoc.getString("content") ?: ""
-                                val timestamp = messageDoc.getTimestamp("timestamp")?.toDate()
-
-                                firestore.collection("users")
-                                    .document(otherUserId)
-                                    .get()
-                                    .addOnSuccessListener { userDoc ->
-                                        val name = userDoc.getString("displayName") ?: "Pengguna"
-                                        val timeString = timestamp?.let { dateFormat.format(it) } ?: "Waktu tidak tersedia"
-
-                                        val textView = TextView(requireContext()).apply {
-                                            text = "$name\n\"$messageText\"\n$timeString"
-                                            textSize = 16f
-                                            setPadding(24, 24, 24, 24)
-                                            setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
-                                        }
-
-                                        containerLayout.addView(textView)
-                                    }
-                            }
-
-                            // Jika sudah cek semua chat dan tidak ada pesan yang valid
-                            if (pending == 0 && !hasMessage) {
-                                showNoMessageText()
-                            }
-                        }
-                        .addOnFailureListener {
-                            pending--
-                            if (pending == 0 && !hasMessage) {
-                                showNoMessageText()
-                            }
-                        }
-                }
-            }
-            .addOnFailureListener {
-                Log.e("HomeFragment", "Gagal ambil daftar chat: ${it.message}")
-                showNoMessageText()
-            }
-    }
-    private fun showNoMessageText() {
-        val noDataView = TextView(requireContext()).apply {
-            text = "Belum ada riwayat pesan"
-            textSize = 18f
-            setPadding(32, 64, 32, 32)
-            gravity = Gravity.CENTER
+        adapter = ChatListAdapter { chatItem ->
+            val intent = Intent(requireContext(), ChatActivity::class.java)
+            intent.putExtra("chatId", chatItem.chatId)
+            startActivity(intent)
         }
-        containerLayout.addView(noDataView)
+
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView.adapter = adapter
+
+        loadChatList()
+    }
+
+    private fun loadChatList() {
+        val uid = auth.currentUser?.uid ?: return
+
+        progressIndicator.isVisible = true
+        recyclerView.isVisible = false
+        emptyTextView.isVisible = false
+
+        db.collection("chats")
+            .whereArrayContains("participants", uid)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                progressIndicator.isVisible = false
+
+                if (error != null || snapshot == null) {
+                    emptyTextView.text = "Gagal memuat daftar chat."
+                    emptyTextView.isVisible = true
+                    return@addSnapshotListener
+                }
+
+                val chatList = snapshot.documents.mapNotNull { doc ->
+                    val lastMsg = doc.getString("lastMessage") ?: ""
+                    val name = doc.getString("chatName") ?: "Chat"
+                    val time = doc.getLong("timestamp") ?: 0L
+
+                    ChatListItem(
+                        chatId = doc.id,
+                        chatName = name,
+                        lastMessage = lastMsg,
+                        timestamp = time
+                    )
+                }
+
+                recyclerView.isVisible = chatList.isNotEmpty()
+                emptyTextView.isVisible = chatList.isEmpty()
+                emptyTextView.text = "Tidak ada riwayat chat."
+
+                adapter.submitList(chatList)
+            }
     }
 }

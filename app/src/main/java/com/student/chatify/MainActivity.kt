@@ -1,118 +1,81 @@
-// file: MainActivity.kt
 package com.student.chatify
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
-import android.view.inputmethod.EditorInfo
-import android.widget.Button
-import android.widget.EditText
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.appbar.MaterialToolbar
+import androidx.navigation.NavOptions
+import androidx.navigation.fragment.NavHostFragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
-import com.student.chatify.recyclerView.ChatAdapter
-import com.student.chatify.viewmodel.ChatViewModel
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var chatRecyclerView: RecyclerView
-    private lateinit var messageEditText: EditText
-    private lateinit var sendButton: Button
-    private val chatAdapter by lazy { ChatAdapter() }
-    private val chatViewModel: ChatViewModel by viewModels()
+    private lateinit var auth: FirebaseAuth
+
+    private val tabOrder = listOf(
+        R.id.homeFragment,
+        R.id.searchFragment,
+        R.id.addFragment,
+        R.id.callLogsFragment,
+        R.id.profileFragment
+    )
+    private var currentTabIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        auth = FirebaseAuth.getInstance()
+
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }else{
+            startActivity(Intent(this, AIChatActivity::class.java))
+            finish()
+            return
+        }
+
+//        val uid = currentUser.uid
+//        val otherUserUid = if (uid == "aoEcAo4NLwgKpDOKUjH4VHAEeQq1") {
+//            "K7tK613mCkNtYidWM9OCoa91NHj1"
+//        } else {
+//            "aoEcAo4NLwgKpDOKUjH4VHAEeQq1"
+//        }
+//
+//        val goToChat = true
+//        if (goToChat) {
+//            val intent = Intent(this, ChatActivity::class.java)
+//            intent.putExtra("otherUserUid", otherUserUid) // Kirim otherUserUid, bukan chatId!
+//            startActivity(intent)
+//            finish()
+//            return
+//        }
+
+        // Kalau tidak ke ChatActivity, baru tampilkan MainActivity UI
         setContentView(R.layout.activity_main)
 
-        val toolbar = findViewById<MaterialToolbar>(R.id.topAppBar)
-        setSupportActionBar(toolbar)
+        val navController = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment).navController
 
-        chatRecyclerView = findViewById(R.id.chatRecyclerView)
-        messageEditText = findViewById(R.id.messageEditText)
-        sendButton = findViewById(R.id.sendButton)
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).setOnItemSelectedListener { item ->
+            val targetIndex = tabOrder.indexOf(item.itemId)
+            val currentIndex = tabOrder.indexOf(navController.currentDestination?.id)
+            if (targetIndex == currentIndex || targetIndex == -1) return@setOnItemSelectedListener false
 
-        setupRecyclerView()
-        setupSendButton()
-        setupMessageInputListener()
+            val isForward = targetIndex > currentIndex
 
-        observeViewModel()
-        chatViewModel.loadChatHistory() // Muat history saat pertama kali
-    }
+            val anim = NavOptions.Builder()
+                .setEnterAnim(if (isForward) R.anim.slide_in_right else R.anim.slide_in_left)
+                .setExitAnim(if (isForward) R.anim.slide_out_left else R.anim.slide_out_right)
+                .setPopEnterAnim(if (isForward) R.anim.slide_in_left else R.anim.slide_in_right)
+                .setPopExitAnim(if (isForward) R.anim.slide_out_right else R.anim.slide_out_left)
+                .setLaunchSingleTop(true)
+                .build()
 
-    private fun setupRecyclerView() {
-        chatRecyclerView.apply {
-            adapter = chatAdapter
-            layoutManager = LinearLayoutManager(this@MainActivity).apply {
-                stackFromEnd = true
-            }
-        }
-    }
-
-    private fun setupSendButton() {
-        sendButton.setOnClickListener {
-            val text = messageEditText.text.toString().trim()
-            if (text.isNotEmpty()) {
-                chatViewModel.sendUserMessage(text)
-                messageEditText.text.clear()
-            }
-        }
-    }
-
-    private fun setupMessageInputListener() {
-        messageEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEND) {
-                sendButton.performClick()
-                true
-            } else {
-                false
-            }
-        }
-    }
-
-    private fun observeViewModel() {
-        // Observe daftar ChatItem (termasuk DateHeader dan Message)
-        chatViewModel.chatItems.observe(this) { items ->
-            chatAdapter.submitList(items)
-            // Scroll ke item terakhir jika ada
-            if (items != null) {
-                if (items.isNotEmpty()) {
-                    chatRecyclerView.scrollToPosition(items.size - 1)
-                }
-            }
-        }
-
-        // Observe typing status
-        chatViewModel.typingStatus.observe(this) { isTyping ->
-            chatAdapter.updateTypingStatus(isTyping)
-            if (isTyping && chatAdapter.itemCount > 0) {
-                chatRecyclerView.scrollToPosition(chatAdapter.itemCount - 1)
-            }
-        }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when(item.itemId) {
-            R.id.action_profile -> {
-                startActivity(Intent(this, ProfileActivity::class.java))
-                true
-            }
-            R.id.action_logout -> {
-                FirebaseAuth.getInstance().signOut()
-                startActivity(Intent(this, LoginActivity::class.java))
-                finish()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+            navController.navigate(item.itemId, null, anim)
+            currentTabIndex = targetIndex
+            true
         }
     }
 }

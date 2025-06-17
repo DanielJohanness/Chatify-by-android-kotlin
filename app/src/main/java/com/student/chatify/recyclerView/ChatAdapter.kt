@@ -55,11 +55,11 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
                 DateHeaderViewHolder(view)
             }
             VIEW_TYPE_USER_MESSAGE -> {
-                val view = inflater.inflate(R.layout.item_chat_user, parent, false)
+                val view = inflater.inflate(R.layout.item_message_self, parent, false)
                 UserViewHolder(view, ctx)
             }
             VIEW_TYPE_AI_MESSAGE -> {
-                val view = inflater.inflate(R.layout.item_chat_ai, parent, false)
+                val view = inflater.inflate(R.layout.item_message_other, parent, false)
                 AIViewHolder(view, ctx)
             }
             VIEW_TYPE_TYPING -> {
@@ -116,8 +116,8 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
 
     // ViewHolder untuk pesan user
     inner class UserViewHolder(itemView: View, context: Context) : RecyclerView.ViewHolder(itemView) {
-        private val txtMessage: TextView = itemView.findViewById(R.id.userTextView)
-        private val txtTime: TextView = itemView.findViewById(R.id.userTimeTextView)
+        private val txtMessage: TextView = itemView.findViewById(R.id.messageText)
+        private val txtTime: TextView = itemView.findViewById(R.id.messageTime)
         private val markwon = Markwon.create(context)
 
         fun bind(message: ChatItem.Message) {
@@ -132,8 +132,8 @@ class ChatAdapter : ListAdapter<ChatItem, RecyclerView.ViewHolder>(ChatItemDiffC
 
     // ViewHolder untuk pesan AI
     inner class AIViewHolder(itemView: View, context: Context) : RecyclerView.ViewHolder(itemView) {
-        private val txtMessage: TextView = itemView.findViewById(R.id.aiTextView)
-        private val txtTime: TextView = itemView.findViewById(R.id.aiTimeTextView)
+        private val txtMessage: TextView = itemView.findViewById(R.id.messageText)
+        private val txtTime: TextView = itemView.findViewById(R.id.messageTime)
         private val markwon = Markwon.create(context)
 
         fun bind(message: ChatItem.Message) {
