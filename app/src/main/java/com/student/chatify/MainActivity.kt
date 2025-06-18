@@ -26,17 +26,18 @@ class MainActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        val currentUser = FirebaseAuth.getInstance().currentUser
+        val currentUser = auth.currentUser
         if (currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
-        }else{
-            startActivity(Intent(this, AIChatActivity::class.java))
-            finish()
-            return
         }
-
+//        else{
+//            startActivity(Intent(this, AIChatActivity::class.java))
+//            finish()
+//            return
+//        }
+//
 //        val uid = currentUser.uid
 //        val otherUserUid = if (uid == "aoEcAo4NLwgKpDOKUjH4VHAEeQq1") {
 //            "K7tK613mCkNtYidWM9OCoa91NHj1"
@@ -47,13 +48,12 @@ class MainActivity : AppCompatActivity() {
 //        val goToChat = true
 //        if (goToChat) {
 //            val intent = Intent(this, ChatActivity::class.java)
-//            intent.putExtra("otherUserUid", otherUserUid) // Kirim otherUserUid, bukan chatId!
+//            intent.putExtra("otherUserUid", otherUserUid)
 //            startActivity(intent)
 //            finish()
 //            return
 //        }
 
-        // Kalau tidak ke ChatActivity, baru tampilkan MainActivity UI
         setContentView(R.layout.activity_main)
 
         val navController = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment).navController

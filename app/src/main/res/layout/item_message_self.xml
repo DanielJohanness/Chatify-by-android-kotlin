@@ -20,12 +20,29 @@
         android:lineSpacingExtra="4dp"
         android:textIsSelectable="true" />
 
-    <TextView
-        android:id="@+id/messageTime"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#999999"
-        android:layout_marginTop="2dp"
-        android:gravity="end"/>
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/messageTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:gravity="end"
+            android:text="12:00" />
+
+        <TextView
+            android:id="@+id/messageStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="✓✓"
+            android:textSize="12sp"
+            android:textColor="#4CAF50"
+            android:gravity="end" />
+    </LinearLayout>
 </LinearLayout>

@@ -3,6 +3,8 @@ package com.student.chatify.model
 data class Message(
     val id: String = "",
     val senderId: String = "",
-    val content: String = "",
-    val timestamp: Long = 0
+    val text: String = "",
+    val type: String = "text",
+    val timestamp: Long = 0L,
+    val status: String = "sent"
 )
