@@ -87,7 +87,8 @@ class AddFragment : Fragment() {
                         mapOf(
                             "username" to username,
                             "displayName" to (userDoc.getString("displayName") ?: ""),
-                            "profileImage" to (userDoc.getString("profileImage") ?: "")
+                            "profileImage" to (userDoc.getString("profileImage") ?: ""),
+                            "statusMessage" to (userDoc.getString("statusMessage") ?: "")
                         )
                     )
 

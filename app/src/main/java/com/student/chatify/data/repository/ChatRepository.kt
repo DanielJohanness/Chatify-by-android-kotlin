@@ -78,28 +78,24 @@ class ChatRepository(
         otherUid: String
     ): String? {
         return try {
-            val participants = listOf(currentUid, otherUid).sorted()
+            val chatId = getChatId(currentUid, otherUid) // ✅ gunakan ID unik dari 2 uid
+            val docRef = db.collection("chats").document(chatId)
+            val snapshot = docRef.get().await()
 
-            val snapshot = db.collection("chats")
-                .whereEqualTo("participants", participants)
-                .get()
-                .await()
-
-            if (!snapshot.isEmpty) {
-                return snapshot.documents.first().id
+            if (!snapshot.exists()) {
+                val participants = listOf(currentUid, otherUid).sorted()
+                val chatData = mapOf(
+                    "participants" to participants,
+                    "lastMessage" to "",
+                    "lastMessageTime" to System.currentTimeMillis(),
+                    "unreadCounts" to mapOf(currentUid to 0L, otherUid to 0L)
+                )
+                docRef.set(chatData).await()
             }
 
-            val chatData = mapOf(
-                "participants" to participants,
-                "lastMessage" to "",
-                "lastMessageTime" to System.currentTimeMillis(),
-                "unreadCounts" to mapOf(currentUid to 0L, otherUid to 0L)
-            )
-
-            val newDoc = db.collection("chats").add(chatData).await()
-            newDoc.id
+            chatId
         } catch (e: Exception) {
-            null // Optional: Log e.message
+            null
         }
     }
 }
