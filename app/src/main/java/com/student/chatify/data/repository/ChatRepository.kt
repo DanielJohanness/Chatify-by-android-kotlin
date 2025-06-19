@@ -1,6 +1,5 @@
 package com.student.chatify.data.repository
 
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
@@ -8,8 +7,7 @@ import com.student.chatify.model.Message
 import kotlinx.coroutines.tasks.await
 
 class ChatRepository(
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
     fun getChatId(currentUser: String, otherUser: String): String {
@@ -78,23 +76,34 @@ class ChatRepository(
         otherUid: String
     ): String? {
         return try {
-            val chatId = getChatId(currentUid, otherUid) // ✅ gunakan ID unik dari 2 uid
+            // Buat ID chat unik berdasarkan kombinasi UID (misal sorted dan digabung dengan "_")
+            val chatId = getChatId(currentUid, otherUid)
             val docRef = db.collection("chats").document(chatId)
+
+            // Ambil dokumen untuk cek apakah sudah ada
             val snapshot = docRef.get().await()
 
             if (!snapshot.exists()) {
                 val participants = listOf(currentUid, otherUid).sorted()
+
                 val chatData = mapOf(
                     "participants" to participants,
+                    "createdAt" to System.currentTimeMillis(),
                     "lastMessage" to "",
-                    "lastMessageTime" to System.currentTimeMillis(),
-                    "unreadCounts" to mapOf(currentUid to 0L, otherUid to 0L)
+                    "lastMessageTime" to 0L, // Awalnya belum ada pesan
+                    "unreadCounts" to mapOf(
+                        currentUid to 0L,
+                        otherUid to 0L
+                    )
                 )
+
+                // Set data awal chat
                 docRef.set(chatData).await()
             }
 
             chatId
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }

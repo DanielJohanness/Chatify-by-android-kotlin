@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.student.chatify.R
 import com.student.chatify.data.repository.ChatRepository
 import com.student.chatify.model.User
@@ -33,6 +34,7 @@ class SearchFragment : Fragment() {
 
     private var fullUserList: List<User> = emptyList()
     private var isProcessingClick = false
+    private var userListener: ListenerRegistration? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -56,26 +58,34 @@ class SearchFragment : Fragment() {
     private fun fetchUsers() {
         val currentUid = auth.currentUser?.uid ?: return
 
-        db.collection("users")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val users = snapshot.documents.mapNotNull { doc ->
-                    val user = doc.toObject(User::class.java)?.copy(uid = doc.id)
-                    if (user != null && user.uid != currentUid) user else null
+        userListener?.remove()
+        userListener = db.collection("users").document(currentUid)
+            .collection("contacts")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || !isAdded) return@addSnapshotListener
+
+                val contactUsers = snapshot.documents.mapNotNull { doc ->
+                    val user = User(
+                        uid = doc.id,
+                        username = doc.getString("username") ?: "",
+                        displayName = doc.getString("displayName") ?: "",
+                        profileImage = doc.getString("profileImage") ?: "",
+                        statusMessage = doc.getString("statusMessage") ?: "",
+                        isOnline = false,
+                        lastSeen = 0L
+                    )
+                    user
                 }
-                fullUserList = users
-                adapter.submitList(users)
+
+                fullUserList = contactUsers
+                filterAndDisplayUsers(etSearch.text.toString())
             }
     }
 
     private fun setupSearchFilter() {
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                val query = s.toString().trim().lowercase()
-                val filtered = if (query.isEmpty()) fullUserList else fullUserList.filter {
-                    it.displayName.lowercase().contains(query) || it.username.lowercase().contains(query)
-                }
-                adapter.submitList(filtered)
+                filterAndDisplayUsers(s.toString())
             }
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -83,9 +93,17 @@ class SearchFragment : Fragment() {
         })
     }
 
+    private fun filterAndDisplayUsers(queryRaw: String) {
+        val query = queryRaw.trim().lowercase()
+        val filtered = if (query.isEmpty()) fullUserList else fullUserList.filter {
+            it.displayName.lowercase().contains(query) || it.username.lowercase().contains(query)
+        }
+        adapter.submitList(filtered)
+    }
+
     private fun startChatWithUser(user: User) {
-        val currentUser = auth.currentUser
-        if (currentUser == null || isProcessingClick || !isAdded) return
+        val currentUser = auth.currentUser ?: return
+        if (isProcessingClick || !isAdded) return
 
         val currentUid = currentUser.uid
         val context = context ?: return
@@ -118,5 +136,11 @@ class SearchFragment : Fragment() {
                 isProcessingClick = false
             }
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        userListener?.remove()
+        userListener = null
     }
 }

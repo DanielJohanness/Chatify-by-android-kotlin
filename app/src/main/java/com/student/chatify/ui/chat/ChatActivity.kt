@@ -27,7 +27,7 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
     private lateinit var adapter: MessageAdapter
 
     private val repository by lazy {
-        ChatRepository(FirebaseFirestore.getInstance(), FirebaseAuth.getInstance())
+        ChatRepository(FirebaseFirestore.getInstance())
     }
     private val viewModelFactory by lazy { ChatViewModelFactory(repository) }
     private val viewModel: ChatViewModel by viewModels { viewModelFactory }
@@ -55,6 +55,12 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         adapter.scrollToBottomListener = this
         recyclerView.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         recyclerView.adapter = adapter
+        val chatId = intent.getStringExtra("chatId") ?: return
+        val myUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("chats").document(chatId)
+            .update("unreadCounts.$myUid", 0)
 
         setupAutoScroll()
         observeMessages()
@@ -67,6 +73,16 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
                 sendMessage(text)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val chatId = intent.getStringExtra("chatId") ?: return
+        val myUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("chats").document(chatId)
+            .update("unreadCounts.$myUid", 0)
     }
 
     private fun setupAutoScroll() {

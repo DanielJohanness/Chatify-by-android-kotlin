@@ -35,7 +35,7 @@ class AddFragment : Fragment() {
 
         firestore = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
-        chatRepo = ChatRepository(firestore, auth)
+        chatRepo = ChatRepository(firestore)
 
         etUsername = view.findViewById(R.id.etUsername)
         btnAddContact = view.findViewById(R.id.btnAddContact)

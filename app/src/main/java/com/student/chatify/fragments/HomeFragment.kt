@@ -1,3 +1,4 @@
+// HomeFragment.kt
 package com.student.chatify.fragments
 
 import android.content.Intent
@@ -20,7 +21,6 @@ import com.student.chatify.model.ChatSummary
 import com.student.chatify.recyclerView.ChatListAdapter
 import com.student.chatify.ui.chat.ChatActivity
 
-// HomeFragment.kt
 class HomeFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
@@ -31,6 +31,8 @@ class HomeFragment : Fragment() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private var chatListener: ListenerRegistration? = null
+    private val messageListeners = mutableMapOf<String, ListenerRegistration>()
+    private val chatSummariesMap = mutableMapOf<String, ChatSummary>()
     private var currentUid: String? = null
 
     override fun onCreateView(
@@ -59,18 +61,18 @@ class HomeFragment : Fragment() {
         super.onDestroyView()
         chatListener?.remove()
         adapter.clearListeners()
+        messageListeners.values.forEach { it.remove() }
+        messageListeners.clear()
     }
 
     private fun setupRecyclerView() {
         adapter = ChatListAdapter(currentUid!!) { chatItem ->
             val otherUserUid = chatItem.participants.firstOrNull { it != currentUid } ?: return@ChatListAdapter
-            val intent = Intent(requireContext(), ChatActivity::class.java).apply {
+            startActivity(Intent(requireContext(), ChatActivity::class.java).apply {
                 putExtra("chatId", chatItem.chatId)
                 putExtra("otherUserUid", otherUserUid)
-            }
-            startActivity(intent)
+            })
         }
-
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
     }
@@ -80,10 +82,17 @@ class HomeFragment : Fragment() {
         recyclerView.isVisible = false
         emptyTextView.isVisible = false
 
+        chatListener?.remove()
+        messageListeners.values.forEach { it.remove() }
+        messageListeners.clear()
+        chatSummariesMap.clear()
+
         chatListener = db.collection("chats")
             .whereArrayContains("participants", currentUid!!)
             .orderBy("lastMessageTime", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
+                if (!isAdded) return@addSnapshotListener
+
                 if (error != null || snapshot == null) {
                     emptyTextView.text = "Gagal memuat daftar chat."
                     emptyTextView.isVisible = true
@@ -91,28 +100,58 @@ class HomeFragment : Fragment() {
                     return@addSnapshotListener
                 }
 
-                val chatList = snapshot.documents.mapNotNull { doc ->
-                    val participants = doc.get("participants") as? List<String> ?: return@mapNotNull null
-                    val lastMsg = doc.getString("lastMessage") ?: ""
-                    val time = doc.getLong("lastMessageTime") ?: 0L
+                val newChatIds = snapshot.documents.map { it.id }.toSet()
+                val existingChatIds = chatSummariesMap.keys.toSet()
+                val removedChatIds = existingChatIds - newChatIds
 
+                removedChatIds.forEach { chatId ->
+                    chatSummariesMap.remove(chatId)
+                    messageListeners.remove(chatId)?.remove()
+                }
+
+                for (doc in snapshot.documents) {
+                    val chatId = doc.id
+                    val participants = doc.get("participants") as? List<String> ?: continue
                     val unreadCounts = doc.get("unreadCounts") as? Map<String, Long>
                     val unread = unreadCounts?.get(currentUid)?.toInt() ?: 0
 
-                    ChatSummary(
-                        chatId = doc.id,
-                        participants = participants,
-                        lastMessage = lastMsg,
-                        lastMessageTime = time,
-                        unreadCount = unread
-                    )
+                    messageListeners[chatId]?.remove()
+                    val msgListener = db.collection("chats").document(chatId)
+                        .collection("messages")
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .limit(1)
+                        .addSnapshotListener { msgSnap, _ ->
+                            if (!isAdded) return@addSnapshotListener
+
+                            val lastDoc = msgSnap?.documents?.firstOrNull()
+                            if (lastDoc == null) {
+                                chatSummariesMap.remove(chatId)
+                                messageListeners.remove(chatId)?.remove()
+                            } else {
+                                val lastMessage = lastDoc.getString("text") ?: ""
+                                val timestamp = lastDoc.getLong("timestamp") ?: 0L
+
+                                chatSummariesMap[chatId] = ChatSummary(
+                                    chatId = chatId,
+                                    participants = participants,
+                                    lastMessage = lastMessage,
+                                    lastMessageTime = timestamp,
+                                    unreadCount = unread
+                                )
+                            }
+
+                            val sortedList = chatSummariesMap.values
+                                .sortedByDescending { it.lastMessageTime }
+
+                            adapter.submitList(sortedList)
+                            recyclerView.isVisible = sortedList.isNotEmpty()
+                            emptyTextView.isVisible = sortedList.isEmpty()
+                        }
+
+                    messageListeners[chatId] = msgListener
                 }
 
-                adapter.submitList(chatList)
                 progressIndicator.isVisible = false
-                recyclerView.isVisible = chatList.isNotEmpty()
-                emptyTextView.isVisible = chatList.isEmpty()
-                emptyTextView.text = "Tidak ada riwayat chat."
             }
     }
 }

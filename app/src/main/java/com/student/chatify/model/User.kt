@@ -6,7 +6,7 @@ data class User(
     val username: String = "",
     val displayName: String = "",
     val profileImage: String = "",
-    val statusMessage: String = "",
+    val statusMessage: String = "Hello World",
     val isOnline: Boolean = true,
     val lastSeen: Long = 0L,
     val createdAt: Long = 0L
