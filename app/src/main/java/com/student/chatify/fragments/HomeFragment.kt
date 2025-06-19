@@ -15,7 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-import com.student.chatify.ChatActivity
+import com.student.chatify.ui.chat.ChatActivity
 import com.student.chatify.R
 import com.student.chatify.model.ChatSummary
 import com.student.chatify.recyclerView.ChatListAdapter

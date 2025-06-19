@@ -6,5 +6,5 @@ data class Message(
     val text: String = "",
     val type: String = "text",
     val timestamp: Long = 0L,
-    val status: String = "sent"
+    val status: String = ""
 )

@@ -1,0 +1,178 @@
+package com.student.chatify.ui.chat
+
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.Button
+import android.widget.EditText
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.student.chatify.R
+import com.student.chatify.data.repository.ChatRepository
+import com.student.chatify.model.Message
+import com.student.chatify.recyclerView.MessageAdapter
+import java.util.Calendar
+import java.util.Timer
+import java.util.TimerTask
+
+class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener {
+
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var messageEditText: EditText
+    private lateinit var sendButton: Button
+    private lateinit var adapter: MessageAdapter
+
+    private val repository by lazy {
+        ChatRepository(FirebaseFirestore.getInstance(), FirebaseAuth.getInstance())
+    }
+    private val viewModelFactory by lazy { ChatViewModelFactory(repository) }
+    private val viewModel: ChatViewModel by viewModels { viewModelFactory }
+
+    private lateinit var currentUserUid: String
+    private lateinit var otherUserUid: String
+    private lateinit var chatId: String
+
+    private var isUserAtBottom = true
+    private val firestore = FirebaseFirestore.getInstance()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_chat)
+
+        recyclerView = findViewById(R.id.messageRecyclerView)
+        messageEditText = findViewById(R.id.messageEditText)
+        sendButton = findViewById(R.id.sendButton)
+
+        currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        otherUserUid = intent.getStringExtra("otherUserUid") ?: return
+        chatId = repository.getChatId(currentUserUid, otherUserUid)
+
+        adapter = MessageAdapter(currentUserUid, this)
+        adapter.scrollToBottomListener = this
+        recyclerView.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
+        recyclerView.adapter = adapter
+
+        setupAutoScroll()
+        observeMessages()
+        observeTypingStatus()
+        setupTypingWatcher()
+
+        sendButton.setOnClickListener {
+            val text = messageEditText.text.toString().trim()
+            if (text.isNotEmpty()) {
+                sendMessage(text)
+            }
+        }
+    }
+
+    private fun setupAutoScroll() {
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                val layoutManager = rv.layoutManager as LinearLayoutManager
+                isUserAtBottom = layoutManager.findLastCompletelyVisibleItemPosition() >= adapter.itemCount - 1
+            }
+        })
+    }
+
+    private fun observeMessages() {
+        viewModel.messages.observe(this) { messages ->
+            val items = buildMessageItems(messages)
+
+            // Tandai pesan lawan sebagai "read" jika belum
+            messages.forEach {
+                if (it.senderId == otherUserUid && it.status != "read") {
+                    viewModel.updateMessageStatus(chatId, it.id, "read")
+                    adapter.updateMessageStatus(it.id, "read")
+                }
+                if (it.senderId == currentUserUid && it.status == "sending") {
+                    viewModel.updateMessageStatus(chatId, it.id, "sent")
+                    adapter.updateMessageStatus(it.id, "sent")
+                }
+            }
+
+            adapter.submitList(items) {
+                if (isUserAtBottom) recyclerView.scrollToPosition(adapter.itemCount - 1)
+            }
+        }
+        viewModel.loadMessages(chatId)
+    }
+
+    private fun observeTypingStatus() {
+        val typingRef = firestore.collection("chats").document(chatId)
+        typingRef.addSnapshotListener { snapshot, _ ->
+            val typingMap = snapshot?.get("typing") as? Map<*, *> ?: return@addSnapshotListener
+            val isTyping = typingMap[otherUserUid] == true
+            adapter.updateTypingStatus(isTyping)
+        }
+    }
+
+    private fun setupTypingWatcher() {
+        val typingRef = firestore.collection("chats").document(chatId)
+        val typingDebounce = Timer()
+        var typingTask: TimerTask? = null
+
+        messageEditText.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val isTyping = !s.isNullOrBlank()
+                typingTask?.cancel()
+                typingRef.update("typing.${currentUserUid}", isTyping)
+
+                if (isTyping) {
+                    typingTask = object : TimerTask() {
+                        override fun run() {
+                            typingRef.update("typing.${currentUserUid}", false)
+                        }
+                    }
+                    typingDebounce.schedule(typingTask, 3000) // Set ke false setelah 3 detik tidak mengetik
+                }
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+    }
+
+    private fun sendMessage(text: String) {
+        val timestamp = System.currentTimeMillis()
+        val messageId = firestore.collection("dummy").document().id
+        val message = Message(
+            id = messageId,
+            senderId = currentUserUid,
+            text = text,
+            type = "text",
+            timestamp = timestamp,
+            status = "sending"
+        )
+        adapter.addTemporaryMessage(message)
+        messageEditText.text.clear()
+
+        viewModel.sendMessage(chatId, message)
+        viewModel.updateChatSummary(chatId, listOf(currentUserUid, otherUserUid), text, timestamp)
+    }
+
+    private fun buildMessageItems(messages: List<Message>): List<MessageAdapter.MessageItem> {
+        val items = mutableListOf<MessageAdapter.MessageItem>()
+        var lastDateKey: String? = null
+
+        for (msg in messages) {
+            val cal = Calendar.getInstance().apply { timeInMillis = msg.timestamp }
+            val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}"
+            if (dateKey != lastDateKey) {
+                items.add(MessageAdapter.MessageItem.DateHeader(msg.timestamp))
+                lastDateKey = dateKey
+            }
+            items.add(MessageAdapter.MessageItem.MessageData(msg))
+        }
+        return items
+    }
+
+    override fun scrollToBottom() {
+        recyclerView.post {
+            recyclerView.scrollToPosition(adapter.itemCount - 1)
+        }
+    }
+}

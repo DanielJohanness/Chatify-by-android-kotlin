@@ -32,27 +32,6 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
-//        else{
-//            startActivity(Intent(this, AIChatActivity::class.java))
-//            finish()
-//            return
-//        }
-//
-//        val uid = currentUser.uid
-//        val otherUserUid = if (uid == "aoEcAo4NLwgKpDOKUjH4VHAEeQq1") {
-//            "K7tK613mCkNtYidWM9OCoa91NHj1"
-//        } else {
-//            "aoEcAo4NLwgKpDOKUjH4VHAEeQq1"
-//        }
-//
-//        val goToChat = true
-//        if (goToChat) {
-//            val intent = Intent(this, ChatActivity::class.java)
-//            intent.putExtra("otherUserUid", otherUserUid)
-//            startActivity(intent)
-//            finish()
-//            return
-//        }
 
         setContentView(R.layout.activity_main)
 
