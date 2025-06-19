@@ -1,3 +1,4 @@
+// 📁 RegisterActivity.kt (update dengan UserManager)
 package com.student.chatify
 
 import android.content.Intent
@@ -8,20 +9,21 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
+import com.student.chatify.data.UserManager
+import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    private lateinit var firestore: FirebaseFirestore
     private lateinit var googleSignInClient: GoogleSignInClient
 
     private lateinit var btnGoogleSignIn: Button
@@ -36,7 +38,6 @@ class RegisterActivity : AppCompatActivity() {
         setContentView(R.layout.activity_register)
 
         auth = FirebaseAuth.getInstance()
-        firestore = FirebaseFirestore.getInstance()
 
         btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn)
         btnRegister = findViewById(R.id.registerButton)
@@ -102,26 +103,14 @@ class RegisterActivity : AppCompatActivity() {
 
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
-                showLoading(false)
                 if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    user?.let {
-                        val username = email.substringBefore("@")
-                        val userMap = hashMapOf(
-                            "email" to email,
-                            "username" to username,
-                            "displayName" to username,
-                            "profileImage" to ""
-                        )
-                        firestore.collection("users").document(it.uid).set(userMap)
-                            .addOnSuccessListener {
-                                goToDashboard()
-                            }
-                            .addOnFailureListener { e ->
-                                Toast.makeText(this, "Gagal menyimpan data user: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
+                    lifecycleScope.launch {
+                        UserManager.createUserIfNotExists()
+                        showLoading(false)
+                        goToDashboard()
                     }
                 } else {
+                    showLoading(false)
                     Toast.makeText(this, "Register gagal: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                     Log.e("Register", "createUserWithEmailAndPassword failed", task.exception)
                 }
@@ -160,48 +149,17 @@ class RegisterActivity : AppCompatActivity() {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
-                showLoading(false)
                 if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    if (user != null) {
-                        checkUserInFirestore(user.uid, user.email, user.displayName, user.photoUrl?.toString())
-                    } else {
-                        Toast.makeText(this, "User belum terautentikasi", Toast.LENGTH_SHORT).show()
+                    lifecycleScope.launch {
+                        UserManager.createUserIfNotExists()
+                        showLoading(false)
+                        goToDashboard()
                     }
                 } else {
+                    showLoading(false)
                     Toast.makeText(this, "Firebase auth gagal: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                     Log.e("FirebaseAuth", "signInWithCredential failed", task.exception)
                 }
-            }
-    }
-
-    private fun checkUserInFirestore(uid: String, email: String?, displayName: String?, photoUrl: String?) {
-        val userDocRef = firestore.collection("users").document(uid)
-        userDocRef.get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    goToDashboard()
-                } else {
-                    val username = email?.substringBefore("@") ?: "user${System.currentTimeMillis()}"
-                    val userMap = hashMapOf(
-                        "email" to email,
-                        "username" to username,
-                        "displayName" to (displayName ?: username),
-                        "profileImage" to (photoUrl ?: "")
-                    )
-                    userDocRef.set(userMap)
-                        .addOnSuccessListener {
-                            goToDashboard()
-                        }
-                        .addOnFailureListener { e ->
-                            Toast.makeText(this, "Gagal simpan data user: ${e.message}", Toast.LENGTH_SHORT).show()
-                            Log.e("Firestore", "Failed to save user data", e)
-                        }
-                }
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Error cek data user: ${e.message}", Toast.LENGTH_SHORT).show()
-                Log.e("Firestore", "Failed to get user data", e)
             }
     }
 

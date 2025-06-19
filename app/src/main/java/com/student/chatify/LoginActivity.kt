@@ -1,3 +1,4 @@
+// 📁 LoginActivity.kt (update dengan UserManager)
 package com.student.chatify
 
 import android.app.Activity
@@ -10,11 +11,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.student.chatify.data.UserManager
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
@@ -60,7 +64,6 @@ class LoginActivity : AppCompatActivity() {
         loadingProgressBar = findViewById(R.id.loadingProgressBar)
         errorTextView = findViewById(R.id.errorTextView)
 
-        // Setup Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
@@ -69,7 +72,6 @@ class LoginActivity : AppCompatActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Google Sign-In
         googleSignInButton.setOnClickListener {
             googleSignInClient.signOut().addOnCompleteListener(this) {
                 showLoading(true)
@@ -78,7 +80,6 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-        // Anonymous Login
         anonymousLoginButton.setOnClickListener {
             showLoading(true)
             firebaseAuthWithAnonymous()
@@ -89,11 +90,15 @@ class LoginActivity : AppCompatActivity() {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
-                showLoading(false)
                 if (task.isSuccessful) {
-                    Toast.makeText(this, "Login Google berhasil", Toast.LENGTH_SHORT).show()
-                    startDashboard()
+                    lifecycleScope.launch {
+                        UserManager.createUserIfNotExists()
+                        showLoading(false)
+                        Toast.makeText(this@LoginActivity, "Login Google berhasil", Toast.LENGTH_SHORT).show()
+                        startDashboard()
+                    }
                 } else {
+                    showLoading(false)
                     showError("Login Google gagal: ${task.exception?.message}")
                 }
             }
@@ -102,11 +107,15 @@ class LoginActivity : AppCompatActivity() {
     private fun firebaseAuthWithAnonymous() {
         auth.signInAnonymously()
             .addOnCompleteListener(this) { task ->
-                showLoading(false)
                 if (task.isSuccessful) {
-                    Toast.makeText(this, "Login anonim berhasil", Toast.LENGTH_SHORT).show()
-                    startDashboard()
+                    lifecycleScope.launch {
+                        UserManager.createUserIfNotExists()
+                        showLoading(false)
+                        Toast.makeText(this@LoginActivity, "Login anonim berhasil", Toast.LENGTH_SHORT).show()
+                        startDashboard()
+                    }
                 } else {
+                    showLoading(false)
                     showError("Login anonim gagal: ${task.exception?.message}")
                 }
             }

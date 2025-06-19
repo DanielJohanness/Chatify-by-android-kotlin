@@ -18,4 +18,7 @@
     <color name="colorSurface">#88d1f2</color>
     <color name="colorOnPrimary">#FFFFFF</color>
     <color name="colorOnBackground">#000000</color>
+
+    <color name="green_500">#4CAF50</color>
+    <color name="gray_600">#757575</color>
 </resources>

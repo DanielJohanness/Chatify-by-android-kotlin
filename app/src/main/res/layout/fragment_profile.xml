@@ -4,33 +4,33 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#B3E5FC">
+    android:background="?android:colorBackground"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
 
-    <!-- Hamburger Icon -->
+    <!-- Top bar -->
     <ImageView
         android:id="@+id/menuIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
         android:contentDescription="Menu"
         android:src="@drawable/ic_menu"
+        app:tint="?attr/colorOnBackground"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"/>
+        app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Logout Icon -->
     <ImageView
         android:id="@+id/logoutIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
         android:contentDescription="Logout"
         android:src="@drawable/ic_logout"
+        app:tint="?attr/colorOnBackground"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Profile Title -->
     <TextView
         android:id="@+id/titleText"
         android:layout_width="wrap_content"
@@ -38,79 +38,80 @@
         android:text="Profile"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="#000"
-        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnBackground"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintStart_toEndOf="@id/menuIcon"
+        app:layout_constraintEnd_toStartOf="@id/logoutIcon"
+        app:layout_constraintHorizontal_bias="0.5" />
 
-    <!-- Chip Nama dan ID -->
+    <!-- Username chip -->
     <TextView
         android:id="@+id/chipNameId"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Sho | @shoghibli"
         android:background="@drawable/bg_chip"
+        android:text="..."
         android:textColor="@android:color/white"
-        android:padding="8dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
         android:textStyle="bold"
-        android:layout_marginTop="12dp"
         app:layout_constraintTop_toBottomOf="@id/titleText"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp" />
 
-    <!-- Profile Image -->
+    <!-- Profile photo -->
     <ImageView
         android:id="@+id/profileImageView"
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
+        android:contentDescription="Foto Profil"
         android:src="@drawable/ic_default_profile"
         android:scaleType="centerCrop"
-        android:contentDescription="Foto Profil"
         android:background="@drawable/profile_image_circle"
         app:layout_constraintTop_toBottomOf="@id/chipNameId"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Edit Photo -->
+    <!-- Edit photo -->
     <TextView
         android:id="@+id/editPhotoText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#1976D2"
+        android:layout_marginTop="6dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="48dp"
+        android:text="Edit Profile"
+        android:textColor="?attr/colorPrimary"
         android:textStyle="bold"
-        android:layout_marginTop="4dp"
-        app:layout_constraintTop_toBottomOf="@id/profileImageView"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/profileImageView" />
 
-    <!-- Line -->
+    <!-- Divider -->
     <View
-        android:id="@+id/line"
+        android:id="@+id/divider"
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="#90CAF9"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp"
+        android:background="@color/blue_light"
         app:layout_constraintTop_toBottomOf="@id/editPhotoText"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Name Row -->
+    <!-- Info rows -->
     <LinearLayout
         android:id="@+id/nameRow"
-        android:orientation="horizontal"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?attr/colorSurface"
         android:padding="16dp"
-        android:background="@drawable/bg_card"
-        android:layout_marginTop="8dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        app:layout_constraintTop_toBottomOf="@id/line"
+        android:layout_marginTop="12dp"
+        app:layout_constraintTop_toBottomOf="@id/divider"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -119,27 +120,25 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Name:\nSho"
-            android:textColor="#000"/>
+            android:text="Name:\n..."
+            android:textColor="?attr/colorOnBackground" />
 
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_arrow_right"
-            android:contentDescription="Edit Name"/>
+            android:contentDescription="Edit Name"
+            app:tint="?attr/colorOnBackground" />
     </LinearLayout>
 
-    <!-- ID Row -->
     <LinearLayout
         android:id="@+id/idRow"
-        android:orientation="horizontal"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?attr/colorSurface"
         android:padding="16dp"
-        android:background="@drawable/bg_card"
         android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
         app:layout_constraintTop_toBottomOf="@id/nameRow"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -149,27 +148,25 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="ID:\n@shoghibli"
-            android:textColor="#000"/>
+            android:text="ID:\n@..."
+            android:textColor="?attr/colorOnBackground" />
 
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_arrow_right"
-            android:contentDescription="Edit ID"/>
+            android:contentDescription="Edit ID"
+            app:tint="?attr/colorOnBackground" />
     </LinearLayout>
 
-    <!-- About Row -->
     <LinearLayout
         android:id="@+id/aboutRow"
-        android:orientation="horizontal"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?attr/colorSurface"
         android:padding="16dp"
-        android:background="@drawable/bg_card"
         android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
         app:layout_constraintTop_toBottomOf="@id/idRow"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -179,14 +176,15 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="About:\nCan't talk, Chatify only"
-            android:textColor="#000"/>
+            android:text="About:\n..."
+            android:textColor="?attr/colorOnBackground" />
 
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_arrow_right"
-            android:contentDescription="Edit About"/>
+            android:contentDescription="Edit About"
+            app:tint="?attr/colorOnBackground" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,167 +1,149 @@
 package com.student.chatify
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.tasks.OnCompleteListener
+import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
-import com.squareup.picasso.Picasso
+import com.student.chatify.data.UserManager
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 class EditProfileActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    private lateinit var firestore: FirebaseFirestore
-    private lateinit var storage: FirebaseStorage
     private lateinit var profileImageView: ImageView
+    private lateinit var editPhotoText: TextView
     private lateinit var displayNameEditText: EditText
+    private lateinit var usernameEditText: EditText
+    private lateinit var statusEditText: EditText
     private lateinit var emailEditText: EditText
-    private lateinit var updateProfileButton: Button
+    private lateinit var saveButton: Button
+    private lateinit var progressBar: ProgressBar
 
-    private var profileImageUri: Uri? = null
-    private val PICK_IMAGE_REQUEST = 1
+    private var selectedImageUri: Uri? = null
+
+    // Modern image picker launcher
+    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+            profileImageView.setImageURI(uri)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_profile)
 
         auth = FirebaseAuth.getInstance()
-        firestore = FirebaseFirestore.getInstance()
-        storage = FirebaseStorage.getInstance()
 
-        // Inisialisasi Views
         profileImageView = findViewById(R.id.profileImageView)
+        editPhotoText = findViewById(R.id.editPhotoText)
         displayNameEditText = findViewById(R.id.displayNameEditText)
+        usernameEditText = findViewById(R.id.usernameEditText)
+        statusEditText = findViewById(R.id.statusEditText)
         emailEditText = findViewById(R.id.emailEditText)
-        updateProfileButton = findViewById(R.id.updateProfileButton)
+        saveButton = findViewById(R.id.saveButton)
+        progressBar = findViewById(R.id.progressBar)
 
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            emailEditText.setText(currentUser.email)
-            displayNameEditText.setText(currentUser.displayName)
+        lifecycleScope.launch {
+            val userData = UserManager.getFullUser()
+            if (userData != null) {
+                displayNameEditText.setText(userData.displayName)
+                usernameEditText.setText(userData.username)
+                usernameEditText.tag = userData.username
+                statusEditText.setText(userData.statusMessage)
+                emailEditText.setText(userData.email)
 
-            // Jika pengguna sudah punya gambar profil, tampilkan
-            if (currentUser.photoUrl != null) {
-                Picasso.get().load(currentUser.photoUrl).into(profileImageView)
+                Glide.with(this@EditProfileActivity)
+                    .load(userData.profileImage)
+                    .placeholder(R.drawable.ic_default_profile)
+                    .error(R.drawable.ic_default_profile)
+                    .circleCrop()
+                    .into(profileImageView)
             }
         }
 
-        // Gambar Profil Klik
-        profileImageView.setOnClickListener {
-            openImageChooser()
-        }
+        // Buka image picker saat klik foto atau teks
+        val openImagePicker = { imagePickerLauncher.launch("image/*") }
+        profileImageView.setOnClickListener { openImagePicker() }
+        editPhotoText.setOnClickListener { openImagePicker() }
 
-        // Tombol Update Profile
-        updateProfileButton.setOnClickListener {
-            updateProfile()
-        }
+        saveButton.setOnClickListener { saveProfile() }
     }
 
-    // Fungsi untuk memilih gambar profil
-    private fun openImageChooser() {
-        val intent = Intent()
-        intent.type = "image/*"
-        intent.action = Intent.ACTION_GET_CONTENT
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST)
-    }
+    private fun saveProfile() {
+        val name = displayNameEditText.text.toString().trim()
+        val username = usernameEditText.text.toString().trim().lowercase()
+        val status = statusEditText.text.toString().trim()
 
-    // Menangani hasil pemilihan gambar
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-            profileImageUri = data.data
-            profileImageView.setImageURI(profileImageUri)
+        if (name.isBlank()) {
+            displayNameEditText.error = "Nama tidak boleh kosong"
+            return
         }
-    }
-
-    // Update Profil Pengguna
-    private fun updateProfile() {
-        val displayName = displayNameEditText.text.toString()
-        if (displayName.isEmpty()) {
-            Toast.makeText(this, "Nama tidak boleh kosong", Toast.LENGTH_SHORT).show()
+        if (username.isBlank()) {
+            usernameEditText.error = "Username tidak boleh kosong"
             return
         }
 
-        val currentUser = auth.currentUser
+        showLoading(true)
 
-        // Memperbarui Nama Pengguna
-        val userProfileChangeRequest = currentUser?.updateProfile(
-            UserProfileChangeRequest.Builder()
-                .setDisplayName(displayName)
-                .setPhotoUri(profileImageUri)  // Gunakan foto URI jika ada
-                .build()
-        )
+        lifecycleScope.launch {
+            val currentUser = auth.currentUser ?: return@launch
 
-        userProfileChangeRequest?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                // Hanya upload gambar profil jika ada gambar yang dipilih
-                profileImageUri?.let { uploadProfileImage(it) }
-
-                Toast.makeText(this, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                finish() // Kembali ke halaman sebelumnya
-            } else {
-                Toast.makeText(this, "Gagal memperbarui profil", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // Mengupload Gambar Profil ke Firebase Storage
-    private fun uploadProfileImage(uri: Uri) {
-        val storageReference: StorageReference = storage.reference
-        val userProfileImageRef = storageReference.child("profile_images/${auth.currentUser?.uid}.jpg")
-
-        val uploadTask = userProfileImageRef.putFile(uri)
-        uploadTask.addOnCompleteListener(OnCompleteListener { task ->
-            if (task.isSuccessful) {
-                // Mendapatkan URL gambar setelah upload selesai
-                userProfileImageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                    // Update gambar profil di Firebase Authentication dan Firestore
-                    updateProfileImageInAuth(downloadUri)
-                    updateFirestoreProfileImage(downloadUri.toString())
+            val usernameChanged = username != usernameEditText.tag
+            val usernameValid = if (usernameChanged) {
+                val available = UserManager.isUsernameAvailable(username)
+                if (!available) {
+                    showLoading(false)
+                    usernameEditText.error = "Username sudah digunakan"
+                    return@launch
                 }
-            } else {
-                Log.e("EditProfile", "Gagal mengupload gambar: ${task.exception?.message}")
-                Toast.makeText(this, "Gagal mengupload gambar profil", Toast.LENGTH_SHORT).show()
-            }
-        })
-    }
+                UserManager.updateUsername(username)
+            } else true
 
-    // Memperbarui URL gambar profil di Firebase Authentication
-    private fun updateProfileImageInAuth(imageUri: Uri) {
-        val currentUser = auth.currentUser
-        val profileUpdates = UserProfileChangeRequest.Builder()
-            .setPhotoUri(imageUri)
-            .build()
+            val nameSuccess = UserManager.updateDisplayName(name)
+            val statusSuccess = UserManager.updateStatusMessage(status)
 
-        currentUser?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d("EditProfile", "Foto profil berhasil diperbarui di Firebase Authentication")
+            val imageSuccess = selectedImageUri?.let {
+                val url = uploadImageToStorage(it, currentUser.uid)
+                if (url != null) UserManager.updateProfileImage(url) else false
+            } ?: true
+
+            showLoading(false)
+
+            if (usernameValid && nameSuccess && statusSuccess && imageSuccess) {
+                Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                finish()
             } else {
-                Log.e("EditProfile", "Gagal memperbarui foto profil di Firebase Authentication")
+                Toast.makeText(this@EditProfileActivity, "Sebagian data gagal diperbarui", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Memperbarui URL gambar profil di Firestore
-    private fun updateFirestoreProfileImage(imageUrl: String) {
-        val userRef = firestore.collection("users").document(auth.currentUser!!.uid)
+    private fun showLoading(isLoading: Boolean) {
+        progressBar.visibility = if (isLoading) ProgressBar.VISIBLE else ProgressBar.GONE
+        saveButton.isEnabled = !isLoading
+    }
 
-        userRef.update("profileImage", imageUrl)
-            .addOnSuccessListener {
-                Log.d("EditProfile", "URL gambar profil berhasil diperbarui di Firestore")
-            }
-            .addOnFailureListener { e ->
-                Log.e("EditProfile", "Gagal memperbarui URL gambar profil di Firestore: ${e.message}")
-            }
+    private suspend fun uploadImageToStorage(uri: Uri, uid: String): Uri? {
+        return try {
+            val ref = FirebaseStorage.getInstance()
+                .reference.child("profileImages/$uid-${UUID.randomUUID()}.jpg")
+            ref.putFile(uri).await()
+            ref.downloadUrl.await()
+        } catch (e: Exception) {
+            null
+        }
     }
 }
