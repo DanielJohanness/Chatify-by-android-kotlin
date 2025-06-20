@@ -27,7 +27,7 @@ object UserManager {
             username = finalUsername,
             displayName = firebaseUser.displayName ?: finalUsername,
             profileImage = firebaseUser.photoUrl?.toString() ?: "",
-            statusMessage = "",
+            statusMessage = "Hello World",
             createdAt = System.currentTimeMillis(),
             isOnline = true
         )

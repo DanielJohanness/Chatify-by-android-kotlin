@@ -108,14 +108,31 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         viewModel.messages.observe(this) { messages ->
             val items = buildMessageItems(messages)
 
+            var hasResetUnread = false
+
             messages.forEach { message ->
                 val isIncoming = message.senderId == otherUserUid
                 val isOutgoing = message.senderId == currentUserUid
 
                 when {
-                    isIncoming && message.status == "sent" -> viewModel.updateMessageStatus(chatId, message.id, "delivered")
-                    isIncoming && message.status == "delivered" -> viewModel.updateMessageStatus(chatId, message.id, "read")
-                    isOutgoing && message.status == "sending" -> viewModel.updateMessageStatus(chatId, message.id, "sent")
+                    isIncoming && message.status == "sent" -> {
+                        viewModel.updateMessageStatus(chatId, message.id, "delivered")
+                    }
+                    isIncoming && message.status == "delivered" -> {
+                        viewModel.updateMessageStatus(chatId, message.id, "read")
+                        adapter.updateMessageStatus(message.id, "read")
+                        hasResetUnread = true
+                    }
+                    isOutgoing && message.status == "sending" -> {
+                        viewModel.updateMessageStatus(chatId, message.id, "sent")
+                    }
+                }
+            }
+
+            // ✅ Reset unread count jika pesan dari lawan bicara masuk & dibaca
+            if (hasResetUnread) {
+                lifecycleScope.launch {
+                    viewModel.resetUnreadCount(chatId, currentUserUid)
                 }
             }
 
@@ -123,6 +140,7 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
                 if (isUserAtBottom) scrollToBottom()
             }
         }
+
         viewModel.loadMessages(chatId)
     }
 

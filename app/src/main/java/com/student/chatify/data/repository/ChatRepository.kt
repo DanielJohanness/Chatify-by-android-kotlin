@@ -124,8 +124,13 @@ class ChatRepository(
         }
     }
 
-    fun resetUnreadCount(chatId: String, userUid: String) {
-        db.collection("chats").document(chatId)
-            .update("unreadCounts.$userUid", 0)
+    suspend fun resetUnreadCount(chatId: String, userUid: String) {
+        try {
+            db.collection("chats").document(chatId)
+                .update("unreadCounts.$userUid", 0)
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace() // Bisa ditambah log jika mau
+        }
     }
 }
