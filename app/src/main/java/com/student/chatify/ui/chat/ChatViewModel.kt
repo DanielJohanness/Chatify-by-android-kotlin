@@ -19,8 +19,8 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
         }
     }
 
-    fun sendMessage(chatId: String, message: Message) = viewModelScope.launch {
-        repository.sendMessage(chatId, message)
+    fun sendMessage(chatId: String, message: Message, receiverUid: String) = viewModelScope.launch {
+        repository.sendMessage(chatId, message, receiverUid)
     }
 
     fun updateMessageStatus(chatId: String, messageId: String, status: String) = viewModelScope.launch {
@@ -30,4 +30,9 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
     fun updateChatSummary(chatId: String, participants: List<String>, text: String, timestamp: Long) = viewModelScope.launch {
         repository.updateChatSummary(chatId, participants, text, timestamp)
     }
+
+    suspend fun resetUnreadCount(chatId: String, userUid: String) {
+        repository.resetUnreadCount(chatId, userUid)
+    }
+
 }

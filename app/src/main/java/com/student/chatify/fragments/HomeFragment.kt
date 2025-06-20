@@ -1,8 +1,8 @@
-// HomeFragment.kt
 package com.student.chatify.fragments
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,12 +28,12 @@ class HomeFragment : Fragment() {
     private lateinit var progressIndicator: CircularProgressIndicator
     private lateinit var emptyTextView: MaterialTextView
 
-    private val db = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private val db by lazy { FirebaseFirestore.getInstance() }
+    private val auth by lazy { FirebaseAuth.getInstance() }
     private var chatListener: ListenerRegistration? = null
     private val messageListeners = mutableMapOf<String, ListenerRegistration>()
     private val chatSummariesMap = mutableMapOf<String, ChatSummary>()
-    private var currentUid: String? = null
+    private val currentUid get() = auth.currentUser?.uid
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,8 +44,6 @@ class HomeFragment : Fragment() {
         recyclerView = view.findViewById(R.id.chatListRecyclerView)
         progressIndicator = view.findViewById(R.id.progressIndicator)
         emptyTextView = view.findViewById(R.id.emptyTextView)
-
-        currentUid = auth.currentUser?.uid
 
         if (currentUid == null) {
             emptyTextView.text = "Pengguna belum login."
@@ -87,71 +85,80 @@ class HomeFragment : Fragment() {
         messageListeners.clear()
         chatSummariesMap.clear()
 
-        chatListener = db.collection("chats")
-            .whereArrayContains("participants", currentUid!!)
-            .orderBy("lastMessageTime", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (!isAdded) return@addSnapshotListener
+        try {
+            chatListener = db.collection("chats")
+                .whereArrayContains("participants", currentUid!!)
+                .orderBy("lastMessageTime", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
 
-                if (error != null || snapshot == null) {
-                    emptyTextView.text = "Gagal memuat daftar chat."
-                    emptyTextView.isVisible = true
-                    progressIndicator.isVisible = false
-                    return@addSnapshotListener
-                }
+                    if (!isAdded) return@addSnapshotListener
+                    Log.d("HomeFragment", "Chat snapshot: ${snapshot?.documents?.size} | Error: ${error?.message}")
 
-                val newChatIds = snapshot.documents.map { it.id }.toSet()
-                val existingChatIds = chatSummariesMap.keys.toSet()
-                val removedChatIds = existingChatIds - newChatIds
+                    if (error != null || snapshot == null) {
+                        emptyTextView.text = "Gagal memuat daftar chat."
+                        emptyTextView.isVisible = true
+                        progressIndicator.isVisible = false
+                        recyclerView.isVisible = false
+                        return@addSnapshotListener
+                    }
 
-                removedChatIds.forEach { chatId ->
-                    chatSummariesMap.remove(chatId)
-                    messageListeners.remove(chatId)?.remove()
-                }
+                    val newChatIds = snapshot.documents.map { it.id }.toSet()
+                    val removedChatIds = chatSummariesMap.keys - newChatIds
 
-                for (doc in snapshot.documents) {
-                    val chatId = doc.id
-                    val participants = doc.get("participants") as? List<String> ?: continue
-                    val unreadCounts = doc.get("unreadCounts") as? Map<String, Long>
-                    val unread = unreadCounts?.get(currentUid)?.toInt() ?: 0
+                    removedChatIds.forEach { chatId ->
+                        chatSummariesMap.remove(chatId)
+                        messageListeners.remove(chatId)?.remove()
+                    }
 
-                    messageListeners[chatId]?.remove()
-                    val msgListener = db.collection("chats").document(chatId)
-                        .collection("messages")
-                        .orderBy("timestamp", Query.Direction.DESCENDING)
-                        .limit(1)
-                        .addSnapshotListener { msgSnap, _ ->
-                            if (!isAdded) return@addSnapshotListener
+                    for (doc in snapshot.documents) {
+                        val chatId = doc.id
+                        val participants = (doc.get("participants") as? List<*>)?.filterIsInstance<String>() ?: continue
+                        val unreadCounts = (doc.get("unreadCounts") as? Map<*, *>)?.mapNotNull {
+                            val key = it.key as? String
+                            val value = (it.value as? Number)?.toLong()
+                            if (key != null && value != null) key to value else null
+                        }?.toMap() ?: emptyMap()
+                        val unread = unreadCounts[currentUid] ?: 0
 
-                            val lastDoc = msgSnap?.documents?.firstOrNull()
-                            if (lastDoc == null) {
-                                chatSummariesMap.remove(chatId)
-                                messageListeners.remove(chatId)?.remove()
-                            } else {
-                                val lastMessage = lastDoc.getString("text") ?: ""
-                                val timestamp = lastDoc.getLong("timestamp") ?: 0L
+                        messageListeners[chatId]?.remove()
+                        val msgListener = db.collection("chats").document(chatId)
+                            .collection("messages")
+                            .orderBy("timestamp", Query.Direction.DESCENDING)
+                            .limit(1)
+                            .addSnapshotListener inner@{ msgSnap, _ ->
+                                if (!isAdded) return@inner
 
-                                chatSummariesMap[chatId] = ChatSummary(
-                                    chatId = chatId,
-                                    participants = participants,
-                                    lastMessage = lastMessage,
-                                    lastMessageTime = timestamp,
-                                    unreadCount = unread
-                                )
+                                val lastDoc = msgSnap?.documents?.firstOrNull()
+                                val lastMessage = lastDoc?.getString("text")
+                                val timestamp = lastDoc?.getLong("timestamp")
+
+                                if (lastMessage != null && timestamp != null) {
+                                    chatSummariesMap[chatId] = ChatSummary(
+                                        chatId = chatId,
+                                        participants = participants,
+                                        lastMessage = lastMessage,
+                                        lastMessageTime = timestamp,
+                                        unreadCount = unread.toInt()
+                                    )
+
+                                    val sortedList = chatSummariesMap.values
+                                        .sortedByDescending { it.lastMessageTime }
+
+                                    adapter.submitList(sortedList)
+                                    recyclerView.isVisible = sortedList.isNotEmpty()
+                                    emptyTextView.isVisible = sortedList.isEmpty()
+                                }
                             }
-
-                            val sortedList = chatSummariesMap.values
-                                .sortedByDescending { it.lastMessageTime }
-
-                            adapter.submitList(sortedList)
-                            recyclerView.isVisible = sortedList.isNotEmpty()
-                            emptyTextView.isVisible = sortedList.isEmpty()
-                        }
-
-                    messageListeners[chatId] = msgListener
+                        messageListeners[chatId] = msgListener
+                    }
+                    progressIndicator.isVisible = false
                 }
-
-                progressIndicator.isVisible = false
-            }
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error saat memulai listener", e)
+            emptyTextView.text = "Terjadi kesalahan. Coba lagi nanti."
+            emptyTextView.isVisible = true
+            recyclerView.isVisible = false
+            progressIndicator.isVisible = false
+        }
     }
 }

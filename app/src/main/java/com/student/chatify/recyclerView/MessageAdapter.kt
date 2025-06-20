@@ -94,15 +94,16 @@ class MessageAdapter(
 
     fun updateTypingStatus(isTyping: Boolean) {
         val list = currentList.toMutableList()
-        val hasTyping = list.any { it is MessageItem.MessageData && it.message.timestamp == Long.MAX_VALUE }
-
-        if (isTyping && !hasTyping) {
+        val index = list.indexOfFirst {
+            it is MessageItem.MessageData && it.message.id == "typing"
+        }
+        if (isTyping && index == -1) {
             list.add(
                 MessageItem.MessageData(
                     Message(
                         id = "typing",
                         senderId = "chatify",
-                        text = "",
+                        text = "...",
                         type = "text",
                         timestamp = Long.MAX_VALUE,
                         status = "sent"
@@ -110,12 +111,36 @@ class MessageAdapter(
                 )
             )
             submitList(list)
-        } else if (!isTyping && hasTyping) {
-            submitList(list.filterNot {
-                it is MessageItem.MessageData && it.message.timestamp == Long.MAX_VALUE
-            })
+        } else if (!isTyping && index != -1) {
+            list.removeAt(index)
+            submitList(list)
         }
     }
+
+//    fun updateTypingStatus(isTyping: Boolean) {
+//        val list = currentList.toMutableList()
+//        val hasTyping = list.any { it is MessageItem.MessageData && it.message.timestamp == Long.MAX_VALUE }
+//
+//        if (isTyping && !hasTyping) {
+//            list.add(
+//                MessageItem.MessageData(
+//                    Message(
+//                        id = "typing",
+//                        senderId = "chatify",
+//                        text = "",
+//                        type = "text",
+//                        timestamp = Long.MAX_VALUE,
+//                        status = "sent"
+//                    )
+//                )
+//            )
+//            submitList(list)
+//        } else if (!isTyping && hasTyping) {
+//            submitList(list.filterNot {
+//                it is MessageItem.MessageData && it.message.timestamp == Long.MAX_VALUE
+//            })
+//        }
+//    }
 
     fun addTemporaryMessage(message: Message) {
         val updated = currentList + MessageItem.MessageData(message)

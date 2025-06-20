@@ -57,7 +57,7 @@ class ChatListAdapter(
             holder.profileImage.setImageResource(R.drawable.ic_default_profile)
             holder.statusView.text = ""
         } else {
-            listenToUserChanges(otherUid, holder, item)
+            listenToUserChanges(otherUid, item, holder)
         }
 
         holder.itemView.setOnClickListener { onItemClick(item) }
@@ -65,27 +65,31 @@ class ChatListAdapter(
 
     private fun listenToUserChanges(
         uid: String,
-        holder: ChatViewHolder,
-        chat: ChatSummary
+        chat: ChatSummary,
+        holder: ChatViewHolder
     ) {
         val context = holder.itemView.context
 
-        // Register listener hanya sekali per UID
+        // Listener hanya sekali per UID
         if (!userListeners.containsKey(uid)) {
             val listener = db.collection("users").document(uid)
                 .addSnapshotListener { snapshot, _ ->
                     val user = snapshot?.toObject(User::class.java) ?: return@addSnapshotListener
                     userCache[uid] = user
-                    notifyItemChanged(currentList.indexOfFirst { it.participants.contains(uid) })
+
+                    val index = currentList.indexOfFirst { it.chatId == chat.chatId }
+                    if (index != -1) {
+                        holder.itemView.post {
+                            notifyItemChanged(index)
+                        }
+                    }
                 }
             userListeners[uid] = listener
         }
 
-        // Gunakan data terakhir di-cache
-        val user = userCache[uid]
-        if (user != null) {
+        // Ambil dari cache jika ada
+        userCache[uid]?.let { user ->
             holder.name.text = user.displayName
-            holder.lastMsg.text = chat.lastMessage
             holder.statusView.text = when {
                 user.isOnline -> "Online"
                 user.lastSeen > 0L -> "Terakhir dilihat ${getRelativeTime(user.lastSeen)}"

@@ -27,15 +27,35 @@ class ChatRepository(
             }
     }
 
-    suspend fun sendMessage(chatId: String, message: Message): Boolean {
+    suspend fun sendMessage(chatId: String, message: Message, receiverUid: String): Boolean {
         return try {
+            // Simpan pesan
             db.collection("chats").document(chatId)
                 .collection("messages")
                 .document(message.id)
                 .set(message.copy(status = "sent"))
                 .await()
+
+            // Perbarui lastMessage, lastMessageTime, dan unreadCounts
+            val chatRef = db.collection("chats").document(chatId)
+
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(chatRef)
+                val currentUnread = snapshot.getLong("unreadCounts.$receiverUid") ?: 0L
+                val newUnread = currentUnread + 1
+
+                val updates = mapOf(
+                    "lastMessage" to message.text,
+                    "lastMessageTime" to message.timestamp,
+                    "unreadCounts.$receiverUid" to newUnread
+                )
+
+                transaction.update(chatRef, updates)
+            }.await()
+
             true
         } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }
@@ -71,40 +91,37 @@ class ChatRepository(
         }
     }
 
-    suspend fun startOrCreateChat(
-        currentUid: String,
-        otherUid: String
-    ): String? {
+    suspend fun startOrCreateChat(currentUid: String, otherUid: String): String? {
         return try {
-            // Buat ID chat unik berdasarkan kombinasi UID (misal sorted dan digabung dengan "_")
             val chatId = getChatId(currentUid, otherUid)
-            val docRef = db.collection("chats").document(chatId)
+            val chatRef = db.collection("chats").document(chatId)
 
-            // Ambil dokumen untuk cek apakah sudah ada
-            val snapshot = docRef.get().await()
-
-            if (!snapshot.exists()) {
-                val participants = listOf(currentUid, otherUid).sorted()
-
-                val chatData = mapOf(
-                    "participants" to participants,
-                    "createdAt" to System.currentTimeMillis(),
-                    "lastMessage" to "",
-                    "lastMessageTime" to 0L, // Awalnya belum ada pesan
-                    "unreadCounts" to mapOf(
-                        currentUid to 0L,
-                        otherUid to 0L
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(chatRef)
+                if (!snapshot.exists()) {
+                    val participants = listOf(currentUid, otherUid).sorted()
+                    val now = System.currentTimeMillis()
+                    val initialData = mapOf(
+                        "participants" to participants,
+                        "createdAt" to now,
+                        "lastMessage" to "",
+                        "lastMessageTime" to now,
+                        "unreadCounts" to mapOf(currentUid to 0L, otherUid to 0L),
+                        "typing" to mapOf<String, Boolean>()
                     )
-                )
-
-                // Set data awal chat
-                docRef.set(chatData).await()
-            }
+                    transaction.set(chatRef, initialData)
+                }
+            }.await()
 
             chatId
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+    }
+
+    fun resetUnreadCount(chatId: String, userUid: String) {
+        db.collection("chats").document(chatId)
+            .update("unreadCounts.$userUid", 0)
     }
 }
