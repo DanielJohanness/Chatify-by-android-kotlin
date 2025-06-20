@@ -113,43 +113,33 @@ class HomeFragment : Fragment() {
                     for (doc in snapshot.documents) {
                         val chatId = doc.id
                         val participants = (doc.get("participants") as? List<*>)?.filterIsInstance<String>() ?: continue
-                        val unreadCounts = (doc.get("unreadCounts") as? Map<*, *>)?.mapNotNull {
-                            val key = it.key as? String
-                            val value = (it.value as? Number)?.toLong()
-                            if (key != null && value != null) key to value else null
-                        }?.toMap() ?: emptyMap()
-                        val unread = unreadCounts[currentUid] ?: 0
 
+                        // Pasang listener real-time untuk chat ini
                         messageListeners[chatId]?.remove()
-                        val msgListener = db.collection("chats").document(chatId)
-                            .collection("messages")
-                            .orderBy("timestamp", Query.Direction.DESCENDING)
-                            .limit(1)
-                            .addSnapshotListener inner@{ msgSnap, _ ->
-                                if (!isAdded) return@inner
+                        val chatDocListener = db.collection("chats").document(chatId)
+                            .addSnapshotListener inner@{ chatSnap, _ ->
+                                if (!isAdded || chatSnap == null || !chatSnap.exists()) return@inner
 
-                                val lastDoc = msgSnap?.documents?.firstOrNull()
-                                val lastMessage = lastDoc?.getString("text")
-                                val timestamp = lastDoc?.getLong("timestamp")
+                                val lastMessage = chatSnap.getString("lastMessage") ?: ""
+                                val timestamp = chatSnap.getLong("lastMessageTime") ?: 0L
+                                val unreadCountsMap = chatSnap.get("unreadCounts") as? Map<*, *> ?: emptyMap<String, Long>()
+                                val unread = (unreadCountsMap[currentUid] as? Number)?.toInt() ?: 0
 
-                                if (lastMessage != null && timestamp != null) {
-                                    chatSummariesMap[chatId] = ChatSummary(
-                                        chatId = chatId,
-                                        participants = participants,
-                                        lastMessage = lastMessage,
-                                        lastMessageTime = timestamp,
-                                        unreadCount = unread.toInt()
-                                    )
+                                chatSummariesMap[chatId] = ChatSummary(
+                                    chatId = chatId,
+                                    participants = participants,
+                                    lastMessage = lastMessage,
+                                    lastMessageTime = timestamp,
+                                    unreadCount = unread
+                                )
 
-                                    val sortedList = chatSummariesMap.values
-                                        .sortedByDescending { it.lastMessageTime }
-
-                                    adapter.submitList(sortedList)
-                                    recyclerView.isVisible = sortedList.isNotEmpty()
-                                    emptyTextView.isVisible = sortedList.isEmpty()
-                                }
+                                val sortedList = chatSummariesMap.values.sortedByDescending { it.lastMessageTime }
+                                adapter.submitList(sortedList)
+                                recyclerView.isVisible = sortedList.isNotEmpty()
+                                emptyTextView.isVisible = sortedList.isEmpty()
                             }
-                        messageListeners[chatId] = msgListener
+
+                        messageListeners[chatId] = chatDocListener
                     }
                     progressIndicator.isVisible = false
                 }

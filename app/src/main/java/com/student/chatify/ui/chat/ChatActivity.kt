@@ -10,6 +10,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.student.chatify.R
@@ -171,6 +174,38 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
 
         viewModel.sendMessage(chatId, message, otherUserUid)
         viewModel.updateChatSummary(chatId, listOf(currentUserUid, otherUserUid), text, timestamp)
+
+        // ✅ Jika pesan mention @chatify, minta balasan AI
+        if (text.contains("@chatify", ignoreCase = true)) {
+            generateAIReply(text)
+        }
+    }
+
+    private fun generateAIReply(userMessage: String) {
+        val model = Firebase.ai(backend = GenerativeBackend.googleAI())
+            .generativeModel("gemini-2.0-flash")
+
+        lifecycleScope.launch {
+            try {
+                val prompt = userMessage.replace("@chatify", "", ignoreCase = true).trim()
+                val response = model.generateContent(prompt).text ?: return@launch
+
+                val aiMessageId = firestore.collection("dummy").document().id
+                val aiMessage = Message(
+                    id = aiMessageId,
+                    senderId = "chatify",
+                    text = response,
+                    type = "text",
+                    timestamp = System.currentTimeMillis(),
+                    status = "sent"
+                )
+
+                viewModel.sendMessage(chatId, aiMessage, currentUserUid)
+                viewModel.updateChatSummary(chatId, listOf(currentUserUid, otherUserUid), response, aiMessage.timestamp)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun buildMessageItems(messages: List<Message>): List<MessageAdapter.MessageItem> {
@@ -189,11 +224,18 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         return items
     }
 
-    private fun markMessagesAsRead() {
+    private suspend fun markMessagesAsRead() {
         val messages = viewModel.messages.value ?: return
+        var shouldReset = false
+
         messages.filter { it.senderId == otherUserUid && it.status != "read" }.forEach {
             viewModel.updateMessageStatus(chatId, it.id, "read")
             adapter.updateMessageStatus(it.id, "read")
+            shouldReset = true
+        }
+
+        if (shouldReset) {
+            viewModel.resetUnreadCount(chatId, currentUserUid)
         }
     }
 

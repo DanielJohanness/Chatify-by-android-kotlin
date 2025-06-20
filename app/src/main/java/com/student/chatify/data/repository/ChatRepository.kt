@@ -62,13 +62,17 @@ class ChatRepository(
 
     suspend fun updateStatus(chatId: String, messageId: String, status: String) {
         try {
-            db.collection("chats").document(chatId)
+            val ref = db.collection("chats").document(chatId)
                 .collection("messages").document(messageId)
-                .update("status", status)
-                .await()
-        } catch (_: Exception) {
-            // Optionally log
-        }
+
+            val snapshot = ref.get().await()
+            val currentStatus = snapshot.getString("status") ?: "sent"
+
+            val statusPriority = listOf("sending", "sent", "delivered", "read")
+            if (statusPriority.indexOf(status) > statusPriority.indexOf(currentStatus)) {
+                ref.update("status", status).await()
+            }
+        } catch (_: Exception) {}
     }
 
     suspend fun updateChatSummary(
