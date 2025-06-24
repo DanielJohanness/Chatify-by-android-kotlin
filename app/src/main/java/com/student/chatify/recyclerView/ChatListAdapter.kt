@@ -13,6 +13,7 @@ import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.student.chatify.R
+import com.student.chatify.data.PresenceManager
 import com.student.chatify.model.ChatSummary
 import com.student.chatify.model.User
 import java.text.SimpleDateFormat
@@ -70,7 +71,22 @@ class ChatListAdapter(
     ) {
         val context = holder.itemView.context
 
-        // Listener hanya sekali per UID
+        // Step 1: Dengarkan status online dari Realtime Database — tidak tergantung Firestore
+        PresenceManager.observeUserPresence(uid) { isOnline, lastSeen ->
+            holder.statusView.text = if (isOnline) {
+                "Online"
+            } else {
+                "Terakhir dilihat ${getRelativeTime(lastSeen)}"
+            }
+
+            holder.statusView.setTextColor(
+                context.getColor(
+                    if (isOnline) R.color.green_500 else R.color.gray_600
+                )
+            )
+        }
+
+        // Step 2: Dengarkan data profil dari Firestore (sekali per UID)
         if (!userListeners.containsKey(uid)) {
             val listener = db.collection("users").document(uid)
                 .addSnapshotListener { snapshot, _ ->
@@ -87,19 +103,9 @@ class ChatListAdapter(
             userListeners[uid] = listener
         }
 
-        // Ambil dari cache jika ada
+        // Step 3: Jika data user sudah ada, tampilkan profil
         userCache[uid]?.let { user ->
             holder.name.text = user.displayName
-            holder.statusView.text = when {
-                user.isOnline -> "Online"
-                user.lastSeen > 0L -> "Terakhir dilihat ${getRelativeTime(user.lastSeen)}"
-                else -> ""
-            }
-            holder.statusView.setTextColor(
-                context.getColor(
-                    if (user.isOnline) R.color.green_500 else R.color.gray_600
-                )
-            )
 
             Glide.with(context)
                 .load(user.profileImage)
