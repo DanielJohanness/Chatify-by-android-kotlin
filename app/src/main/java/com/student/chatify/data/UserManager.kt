@@ -35,7 +35,7 @@ object UserManager {
         return true
     }
 
-    suspend fun getUser(uid: String): User? {
+    private suspend fun getUser(uid: String): User? {
         return firestore.collection("users").document(uid).get().await().toObject(User::class.java)
     }
 
@@ -81,17 +81,5 @@ object UserManager {
     suspend fun isUsernameAvailable(username: String): Boolean {
         val snapshot = firestore.collection("users").whereEqualTo("username", username).get().await()
         return snapshot.isEmpty
-    }
-
-    suspend fun updateLastSeen() {
-        auth.currentUser?.uid?.let {
-            firestore.collection("users").document(it).update("lastSeen", System.currentTimeMillis()).await()
-        }
-    }
-
-    suspend fun setOnlineStatus(isOnline: Boolean) {
-        auth.currentUser?.uid?.let {
-            firestore.collection("users").document(it).update("isOnline", isOnline).await()
-        }
     }
 }

@@ -3,14 +3,10 @@ package com.student.chatify
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
-import com.student.chatify.data.PresenceManager
-import com.student.chatify.data.UserManager
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -60,26 +56,5 @@ class MainActivity : AppCompatActivity() {
             currentTabIndex = targetIndex
             true
         }
-        PresenceManager.initPresenceTracking()
     }
-    override fun onResume() {
-        super.onResume()
-        lifecycleScope.launch {
-            UserManager.setOnlineStatus(true)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-
-        // Update ke Firestore
-        lifecycleScope.launch {
-            UserManager.setOnlineStatus(false)
-            UserManager.updateLastSeen()
-        }
-
-        // Update manual ke Realtime Database
-        PresenceManager.setOfflineManually()
-    }
-
 }

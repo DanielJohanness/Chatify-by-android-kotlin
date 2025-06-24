@@ -70,5 +70,5 @@ dependencies {
     implementation (libs.core)
     implementation (libs.picasso)
     implementation (libs.firebase.database.ktx)
-
+    implementation (libs.androidx.lifecycle.process)
 }
