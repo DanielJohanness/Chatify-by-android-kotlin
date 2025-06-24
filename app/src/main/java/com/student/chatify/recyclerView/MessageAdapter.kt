@@ -97,6 +97,7 @@ class MessageAdapter(
         val index = list.indexOfFirst {
             it is MessageItem.MessageData && it.message.id == "typing"
         }
+
         if (isTyping && index == -1) {
             list.add(
                 MessageItem.MessageData(
@@ -110,7 +111,7 @@ class MessageAdapter(
                     )
                 )
             )
-            submitList(list)
+            submitList(list) {scrollToBottomListener?.scrollToBottom()}
         } else if (!isTyping && index != -1) {
             list.removeAt(index)
             submitList(list)
