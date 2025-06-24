@@ -16,6 +16,7 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.student.chatify.R
+import com.student.chatify.data.PresenceManager
 import com.student.chatify.data.repository.ChatRepository
 import com.student.chatify.model.Message
 import com.student.chatify.recyclerView.MessageAdapter
@@ -145,31 +146,28 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
     }
 
     private fun observeTypingStatus() {
-        firestore.collection("chats").document(chatId)
-            .addSnapshotListener { snapshot, _ ->
-                val typingMap = snapshot?.get("typing") as? Map<*, *> ?: return@addSnapshotListener
-                val isTyping = typingMap[otherUserUid] == true
-                adapter.updateTypingStatus(isTyping)
-            }
+        PresenceManager.observeTypingStatus(chatId, otherUserUid) { isTyping ->
+            adapter.updateTypingStatus(isTyping)
+        }
     }
 
     private fun setupTypingWatcher() {
-        val typingRef = firestore.collection("chats").document(chatId)
         messageEditText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 val isTyping = !s.isNullOrBlank()
-                typingRef.update("typing.$currentUserUid", isTyping)
+                PresenceManager.setTypingStatus(chatId, currentUserUid, isTyping)
 
                 typingTimer?.cancel()
                 if (isTyping) {
                     typingTimer = Timer()
                     typingTimer?.schedule(object : TimerTask() {
                         override fun run() {
-                            typingRef.update("typing.$currentUserUid", false)
+                            PresenceManager.setTypingStatus(chatId, currentUserUid, false)
                         }
                     }, 3000)
                 }
             }
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })

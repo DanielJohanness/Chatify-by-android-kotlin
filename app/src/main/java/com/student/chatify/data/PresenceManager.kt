@@ -6,11 +6,13 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.FirebaseFirestore
 
 object PresenceManager {
 
     private val db = FirebaseDatabase.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
     fun initPresenceTracking() {
         val user = auth.currentUser ?: return
@@ -46,7 +48,7 @@ object PresenceManager {
         uid: String,
         onUpdate: (isOnline: Boolean, lastSeen: Long) -> Unit
     ) {
-        val ref = FirebaseDatabase.getInstance().getReference("status/$uid")
+        val ref = db.getReference("status/$uid")
         ref.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val state = snapshot.child("state").getValue(String::class.java)
@@ -58,15 +60,21 @@ object PresenceManager {
         })
     }
 
-    fun setOfflineManually() {
-        val user = auth.currentUser ?: return
-        val uid = user.uid
+    fun setTypingStatus(chatId: String, userId: String, isTyping: Boolean) {
+        val typingRef = firestore.collection("chats").document(chatId)
+        typingRef.update("typing.$userId", isTyping)
+    }
 
-        db.getReference("status/$uid").setValue(
-            mapOf(
-                "state" to "offline",
-                "last_seen" to ServerValue.TIMESTAMP
-            )
-        )
+    fun observeTypingStatus(
+        chatId: String,
+        otherUserId: String,
+        callback: (isTyping: Boolean) -> Unit
+    ) {
+        val typingRef = firestore.collection("chats").document(chatId)
+        typingRef.addSnapshotListener { snapshot, _ ->
+            val typingMap = snapshot?.get("typing") as? Map<*, *> ?: return@addSnapshotListener
+            val isTyping = typingMap[otherUserId] == true
+            callback(isTyping)
+        }
     }
 }
