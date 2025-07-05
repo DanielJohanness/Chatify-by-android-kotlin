@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:gravity="start">
+
+    <!-- Header Nama Pengirim -->
+    <TextView
+        android:id="@+id/senderNameText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nama Pengirim"
+        android:textStyle="bold"
+        android:textColor="#3F51B5"
+        android:textSize="14sp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Bubble Pesan -->
+    <TextView
+        android:id="@+id/messageText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="280dp"
+        android:padding="12dp"
+        android:textColor="#000000"
+        android:textSize="16sp"
+        android:lineSpacingExtra="6dp"
+        android:background="@drawable/bg_ai_message"
+        android:autoLink="web"
+        android:textIsSelectable="true"
+        android:contentDescription="Pesan dari pengguna lain" />
+
+    <!-- Timestamp -->
+    <TextView
+        android:id="@+id/messageTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="#999999"
+        android:layout_marginTop="2dp"
+        android:gravity="end" />
+</LinearLayout>

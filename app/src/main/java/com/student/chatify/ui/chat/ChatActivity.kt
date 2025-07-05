@@ -3,13 +3,14 @@ package com.student.chatify.ui.chat
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.widget.Button
-import android.widget.EditText
+import android.widget.*
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
@@ -19,11 +20,11 @@ import com.student.chatify.R
 import com.student.chatify.data.PresenceManager
 import com.student.chatify.data.repository.ChatRepository
 import com.student.chatify.model.Message
+import com.student.chatify.model.User
 import com.student.chatify.recyclerView.MessageAdapter
 import kotlinx.coroutines.launch
-import java.util.Calendar
-import java.util.Timer
-import java.util.TimerTask
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener {
 
@@ -31,6 +32,10 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
     private lateinit var messageEditText: EditText
     private lateinit var sendButton: Button
     private lateinit var adapter: MessageAdapter
+
+    private lateinit var profileImageView: ImageView
+    private lateinit var usernameTextView: TextView
+    private lateinit var statusTextView: TextView
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
     private val repository by lazy { ChatRepository(firestore) }
@@ -48,10 +53,26 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
+        // Toolbar setup
+        val topAppBar = findViewById<Toolbar>(R.id.topAppBar)
+        setSupportActionBar(topAppBar)
+        supportActionBar?.setDisplayShowTitleEnabled(false) // <-- ini penting
+        topAppBar.setNavigationOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
+
+        // Ambil referensi UI dari Toolbar
+        val toolbarContent = findViewById<LinearLayout>(R.id.toolbarContent)
+        profileImageView = toolbarContent.findViewById(R.id.profileImageView)
+        usernameTextView = toolbarContent.findViewById(R.id.usernameTextView)
+        statusTextView = toolbarContent.findViewById(R.id.statusTextView)
+
+        // Ambil referensi UI lainnya
         recyclerView = findViewById(R.id.messageRecyclerView)
         messageEditText = findViewById(R.id.messageEditText)
         sendButton = findViewById(R.id.sendButton)
 
+        // Cek UID dan setup
         if (currentUserUid.isEmpty()) return
         otherUserUid = intent.getStringExtra("otherUserUid") ?: return
         chatId = repository.getChatId(currentUserUid, otherUserUid)
@@ -66,6 +87,7 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         observeMessages()
         observeTypingStatus()
         setupTypingWatcher()
+        observeOtherUserData()
 
         sendButton.setOnClickListener {
             val text = messageEditText.text.toString().trim()
@@ -108,7 +130,6 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
     private fun observeMessages() {
         viewModel.messages.observe(this) { messages ->
             val items = buildMessageItems(messages)
-
             var hasResetUnread = false
 
             messages.forEach { message ->
@@ -130,7 +151,6 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
                 }
             }
 
-            // ✅ Reset unread count jika pesan dari lawan bicara masuk & dibaca
             if (hasResetUnread) {
                 lifecycleScope.launch {
                     viewModel.resetUnreadCount(chatId, currentUserUid)
@@ -191,7 +211,6 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
         viewModel.sendMessage(chatId, message, otherUserUid)
         viewModel.updateChatSummary(chatId, listOf(currentUserUid, otherUserUid), text, timestamp)
 
-        // ✅ Jika pesan mention @chatify, minta balasan AI
         if (text.contains("@chatify", ignoreCase = true)) {
             generateAIReply(text)
         }
@@ -258,6 +277,52 @@ class ChatActivity : AppCompatActivity(), MessageAdapter.ScrollToBottomListener 
     override fun scrollToBottom() {
         recyclerView.post {
             recyclerView.scrollToPosition(adapter.itemCount - 1)
+        }
+    }
+
+    private fun observeOtherUserData() {
+        val userDocRef = firestore.collection("users").document(otherUserUid)
+
+        userDocRef.addSnapshotListener { snapshot, _ ->
+            val user = snapshot?.toObject(User::class.java) ?: return@addSnapshotListener
+
+            usernameTextView.text = user.displayName
+
+            Glide.with(this)
+                .load(user.profileImage)
+                .placeholder(R.drawable.ic_default_profile)
+                .error(R.drawable.ic_default_profile)
+                .circleCrop()
+                .into(profileImageView)
+        }
+
+        PresenceManager.observeUserPresence(otherUserUid) { isOnline, lastSeen ->
+            statusTextView.text = if (isOnline) {
+                "Online"
+            } else {
+                "Terakhir dilihat ${getRelativeTime(lastSeen)}"
+            }
+
+            val colorRes = if (isOnline) R.color.green_500 else R.color.colorOnPrimary
+            statusTextView.setTextColor(getColor(colorRes))
+        }
+    }
+
+    private fun getRelativeTime(timeMillis: Long): String {
+        if (timeMillis <= 0L) return ""
+        val now = System.currentTimeMillis()
+        val diff = now - timeMillis
+        val minute = 60 * 1000
+        val hour = 60 * minute
+        val day = 24 * hour
+
+        return when {
+            diff < minute -> "barusan"
+            diff < hour -> "${diff / minute} mnt lalu"
+            diff < day -> "${diff / hour} jam lalu"
+            diff < 2 * day -> "kemarin"
+            diff < 7 * day -> "${diff / day} hari lalu"
+            else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(timeMillis))
         }
     }
 }
